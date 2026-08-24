@@ -548,6 +548,10 @@ const NAME_TRANSLATE = {
   'ยาและเวชภัณฑ์': 'Pharmaceuticals & Healthcare',
   'AGRO CPG:BANGLADESH': 'AGRO CPG Bangladesh',
   'AGRO CPG:MYANMAR': 'AGRO CPG Myanmar',
+  // ASCEND GROUP's waste data is ~100% Thailand (697 Ton total, every other
+  // country reports zero), so rather than a near-empty split we simply
+  // relabel the single BU as "ASCEND THA" to match the GHG/Water tile name.
+  'ASCEND GROUP': 'ASCEND THA',
 };
 function tname(n){ return NAME_TRANSLATE[n] || n; }
 
@@ -560,12 +564,12 @@ const BU_TILE_LINES = {
   'AGRO CPG:MYANMAR':    ['AGRO CPG', 'Myanmar'],
 };
 
-// ASCEND GROUP and FIT tiles are hidden here to match the GHG/Energy and Water
-// dashboards' picker. Unlike Water, ASCEND GROUP's Waste data is almost entirely
-// zero even in Thailand (697 Ton total across all 6 years, every other country
-// reports zero) -- there was nothing meaningful to split out, so it stays hidden as
-// one BU (no ASCEND THA tile for Waste). FIT has real data for 2020-2021 only.
-const BU_HIDDEN = new Set(['ASCEND GROUP', 'FIT']);
+// FIT is hidden here to match the GHG/Energy and Water dashboards' picker (real
+// data for 2020-2021 only). ASCEND GROUP is kept and relabeled "ASCEND THA" above
+// (via NAME_TRANSLATE) instead of hidden, so the tile set lines up with GHG/Water --
+// its Waste data is small (697 Ton total across all 6 years) and effectively all
+// Thailand already, so no country-split was needed to produce that tile.
+const BU_HIDDEN = new Set(['FIT']);
 
 // Small composition note shown under a BU's name in the detail view, for a BU that is
 // itself an aggregate of several small companies rather than one entity. Same note
