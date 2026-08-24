@@ -552,6 +552,10 @@ const NAME_TRANSLATE = {
   // country reports zero), so rather than a near-empty split we simply
   // relabel the single BU as "ASCEND THA" to match the GHG/Water tile name.
   'ASCEND GROUP': 'ASCEND THA',
+  // Raw data code is "TRUE COR" here, normalized to "TRUE COP" upstream in
+  // agg_waste.py's NORM dict -- spelled out in full for the tile and detail-page
+  // header, matching GHG/Water.
+  'TRUE COP': 'TRUE Corporation',
 };
 function tname(n){ return NAME_TRANSLATE[n] || n; }
 
