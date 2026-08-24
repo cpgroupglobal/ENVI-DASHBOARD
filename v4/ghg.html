@@ -531,7 +531,7 @@ const METRICS = {
 // denominator to divide by. These render only in the KPI row, from group revenue.
 const INTENSITY = [
   { key: 'energy', label: 'Energy Intensity', gri: '302-3', unit: 'GJ / MB', digits: 2 },
-  { key: 'ghg',    label: 'GHG Intensity',    gri: '305-4', unit: 'tCO2e / MB', digits: 3 },
+  { key: 'ghg',    label: 'GHG Intensity',    gri: '305-4', unit: 'tCO2e / MB', digits: 2 },
 ];
 
 // Returns null when revenue is absent, so the cards simply do not render rather than
@@ -1102,7 +1102,7 @@ function buildSourceStackChart(years, series, colorMap, labelMap, unit, inten){
     // Reserved strip: 4px clear of the very top edge, down to 12px above where the bar
     // plot begins -- entirely separate from the bar area computed above.
     const lineTop = 4, lineBottom = padT - 12;
-    const iMax = Math.max(...iv) * 1.08, iMin = Math.min(...iv) * 0.85;
+    const iMax = Math.max(...iv) * (inten.topPad ? 1.35 : 1.08), iMin = Math.min(...iv) * 0.85;
     const iRng = (iMax - iMin) || 1;
     const gold = resolveColor('--target-line');
     const xAt = i => padL + i*(barW+gap) + barW/2;
@@ -1129,7 +1129,7 @@ function buildSourceStackChart(years, series, colorMap, labelMap, unit, inten){
       t.setAttribute('x',cx); t.setAttribute('y', ty.toFixed(1));
       t.setAttribute('text-anchor','middle'); t.setAttribute('font-size', fs2);
       t.setAttribute('font-weight','800'); t.setAttribute('fill', gold);
-      t.textContent = v.toFixed(inten.digits === undefined ? 2 : inten.digits);
+      t.textContent = v.toFixed(inten.digits === undefined ? 2 : inten.digits) + (inten.unit === '%' ? '%' : '');
       svg.appendChild(t);
     });
   }
@@ -1146,7 +1146,7 @@ function buildSourceStackChart(years, series, colorMap, labelMap, unit, inten){
     const it = document.createElement('div');
     it.className = 'it';
     it.innerHTML = '<span class="d line" style="background:'+resolveColor('--target-line')+'"></span>' +
-      inten.label + ' (' + inten.unit + ')';
+      inten.label + (inten.unit === '%' ? '' : ' (' + inten.unit + ')');
     legend.appendChild(it);
   }
   container.appendChild(legend);
@@ -1326,6 +1326,18 @@ function renderDetailBreakdown(container, det, metric, multiYearDict, year, isGr
   // no per-BU breakdown, so BU/Business-Group detail views never receive it.
   function intenOverlayFor(key){
     if(!isGroup) return undefined;
+    // Renewable % isn't a revenue-basis intensity ratio like the INTENSITY[] entries --
+    // it's the same renewable/energy*100 series as the Renewable % KPI -- so it gets its
+    // own small branch here rather than an INTENSITY[] entry. Values for 2021-2025 are
+    // pinned to user-supplied figures (2020 stays computed -- not supplied); this is
+    // display-only on this chart line, deliberately not reconciled with the Renewable %
+    // KPI tile or the per-year donut breakdown, which keep computing from the workbook.
+    if(key === 'renewable'){
+      const PIN_RENEWABLE_PCT = { 2021: 13.00, 2022: 15.00, 2023: 17.49, 2024: 17.01, 2025: 18.44 };
+      const computed = renewSeries(DATA.group);
+      const series = DATA.years.map((y,i)=> (PIN_RENEWABLE_PCT[y] !== undefined) ? PIN_RENEWABLE_PCT[y] : computed[i]);
+      return { series: series, label: 'Renewable %', unit: '%', digits: 2, topPad: true };
+    }
     const spec = INTENSITY.find(s => s.key === key);
     const iv = spec && intensitySeries(key);
     if(!spec || !iv) return undefined;
@@ -1518,7 +1530,7 @@ function renderDetailBreakdown(container, det, metric, multiYearDict, year, isGr
         rec: seriesFromDetail(d=>d.renewable.rec),
         ppa: seriesFromDetail(d=>d.renewable.ppa),
       };
-      mix = buildSourceStackChart(years, series, REN_COLORS, REN_NAMES, 'GJ');
+      mix = buildSourceStackChart(years, series, REN_COLORS, REN_NAMES, 'GJ', intenOverlayFor('renewable'));
     }
     wrap.appendChild(donutBlock(segs, 'GJ', mix, year, true));
     // Biomass drills one level deeper into the actual feedstocks (wood, rice husk, …).
