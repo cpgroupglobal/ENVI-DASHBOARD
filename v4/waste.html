@@ -155,7 +155,7 @@ main{ padding: 0 16px; }
 }
 .status-badge.good{ color: var(--good); border-color: var(--good); }
 .status-badge.bad{ color: var(--critical); border-color: var(--critical); }
-.stat-tile.has-badge .label{ padding-right: 92px; }
+.stat-tile.has-badge .label{ padding-right: 82px; }
 .stat-tile .label{ font-size: 11.5px; color: var(--text-muted); font-weight:600; }
 .stat-tile .label .label-year{ display:block; font-size:10px; font-weight:600; opacity:.72; margin-top:1px; }
 .stat-tile .value{ font-size: 20px; font-weight:700; margin-top: 3px; letter-spacing:-0.2px; }
@@ -681,7 +681,10 @@ function buildKPI(){
       '<div class="label">Waste Diversion Rate' +
         '<span class="gri-tag" title="GRI 306-4/5">306-4/5</span>' +
         '<span class="label-year">' + last(DATA.years) + '</span></div>' +
-      '<div class="value">' + cur.toFixed(2) + '<span class="value-unit">%</span></div>' +
+      // Rendered inline ("89.27%"), matching how the GHG dashboard's Renewable % KPI
+      // displays a percentage -- not pushed to a separate value-unit line the way the
+      // Ton/m3-per-revenue ratio KPIs are.
+      '<div class="value">' + cur.toFixed(2) + '%</div>' +
       '<div class="delta ' + deltaClass + '">' + arrow + ' ' + Math.abs(ppDelta).toFixed(2) + 'pp YoY</div>';
     row.appendChild(tile);
   })();
@@ -693,8 +696,11 @@ function buildKPI(){
   // news while hiding that a stream is actually behind the pace it needs to hit zero by
   // 2030, so this keeps the KPI card's verdict consistent with that detailed card's own
   // "On track / Above target" language rather than inventing a second, looser metric.
+  // "Industrial Waste to Landfill" (not the full "Industrial Process Waste to Landfill"
+  // used in the chart legend below) so the title fits one line beside the GRI/status
+  // badges, matching the "Food Waste to Landfill" card's line count.
   const ZL_STREAMS = [
-    { key: 'industrial', label: 'Industrial Process Waste to Landfill' },
+    { key: 'industrial', label: 'Industrial Waste to Landfill' },
     { key: 'food', label: 'Food Waste to Landfill' },
   ];
   ZL_STREAMS.forEach(s=>{
@@ -709,9 +715,12 @@ function buildKPI(){
     const milestone = (ti >= 0) ? T.path[ti] : null;
     const tile = document.createElement('div');
     tile.className = 'stat-tile';
+    // No gri-tag pill here (unlike the other KPI cards) -- "Industrial Waste to Landfill"
+    // is long enough on its own that title + ZERO tag + status badge no longer fit on one
+    // line without the title itself wrapping. The "Target 2030: 0" line in the tile body
+    // already states the zero-target plainly, so the tag isn't needed to convey it.
     let html =
       '<div class="label">' + s.label +
-        '<span class="gri-tag" title="GRI 306-5">ZERO</span>' +
         '<span class="label-year">' + years[yi] + '</span></div>' +
       '<div class="value">' + fmtShort(cur, 'Ton') + '</div>' +
       '<div class="delta good">' + (yoy<=0?'&#9660;':'&#9650;') + ' ' + Math.abs(yoy).toFixed(2) + '% YoY</div>';
@@ -723,7 +732,10 @@ function buildKPI(){
         ? fmtShort(Math.abs(gap),'Ton') + ' below ' + years[yi] + ' milestone'
         : fmtShort(Math.abs(gap),'Ton') + ' above ' + years[yi] + ' milestone';
       html += '<div class="target-note">Target 2030: 0 &middot; <b class="' + (onTrack?'good':'bad') + '">' + gapText + '</b></div>' +
-        '<span class="status-badge ' + (onTrack?'good':'bad') + '">' + (onTrack ? '✓ On track' : 'Above target') + '</span>';
+        // "Off track" (not "Above target") -- shorter, and pairs cleanly with "On track"
+        // so both badges are close enough in width to fit the same reserved label space
+        // without the title itself wrapping to a second line.
+        '<span class="status-badge ' + (onTrack?'good':'bad') + '">' + (onTrack ? '✓ On track' : 'Off track') + '</span>';
     }
     tile.innerHTML = html;
     row.appendChild(tile);

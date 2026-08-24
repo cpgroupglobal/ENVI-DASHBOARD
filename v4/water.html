@@ -149,11 +149,11 @@ main{ padding: 0 16px; }
   padding: 12px 12px 10px; position: relative;
 }
 .status-badge{
-  position: absolute; top: 24px; right: 12px; font-size: 12.5px; font-weight: 700;
-  padding: 3px 10px; border-radius: 12px; border: 1.5px solid; line-height: 1.5;
+  position: absolute; top: 12px; right: 12px; font-size: 11px; font-weight: 700;
+  padding: 2px 8px; border-radius: 12px; border: 1.5px solid; line-height: 1.5;
   white-space: nowrap;
 }
-.stat-tile-wide .label{ padding-right: 148px; }
+.stat-tile.has-badge .label{ padding-right: 82px; }
 .status-badge.good{ color: var(--good); border-color: var(--good); }
 .status-badge.bad{ color: var(--critical); border-color: var(--critical); }
 .stat-tile .label{ font-size: 11.5px; color: var(--text-muted); font-weight:600; }
@@ -172,7 +172,6 @@ main{ padding: 0 16px; }
   background: var(--surface-alt); color: var(--accent);
   font-size:9px; font-weight:700; letter-spacing:.2px; vertical-align:1px;
 }
-.stat-tile-wide{ grid-column: 1 / -1; }
 .stat-tile .target-note{
   font-size: 10.5px; color: var(--text-secondary); margin-top: 6px; padding-top: 6px;
   border-top: 1px solid var(--border); line-height: 1.5;
@@ -588,12 +587,17 @@ function last(arr){ return arr[arr.length-1]; }
 function prev(arr){ return arr[arr.length-2]; }
 
 // ---------- KPI row ----------
-// Water Withdrawal Intensity (m3 per Million Baht of group revenue) -- same pattern as
-// the GHG/Energy dashboard's Energy/GHG Intensity KPIs. Lower is always better for an
-// intensity ratio, so goodDir is fixed rather than configured per metric.
+// Water Withdrawal/Consumption Intensity (m3 per Million Baht of group revenue) -- same
+// pattern as the GHG/Energy dashboard's Energy/GHG Intensity KPIs. Lower is always better
+// for an intensity ratio, so goodDir is fixed rather than configured per metric. Withdrawal
+// carries the Group's actual -30%-by-2030 commitment (already achieved, hence the badge);
+// Consumption has no separate stated target, so it gets a plain vs-2020 baseline note
+// instead of an on-track/achieved badge.
 const INTENSITY = [
-  { key: 'withdrawal', label: 'Water Withdrawal Intensity', gri: '303-3', unit: 'm³ / MB', digits: 2,
+  { key: 'withdrawal', label: 'Withdrawal Intensity', gri: '303-3', unit: 'm³ / MB', digits: 2,
     target: { reduction: 0.30, byYear: 2030, baseYear: 2020 } },
+  { key: 'consumption', label: 'Consumption Intensity', gri: '303-5', unit: 'm³ / MB', digits: 2,
+    baselineNote: { baseYear: 2020 } },
 ];
 
 // Returns null when revenue is absent, so the card simply does not render rather than
@@ -639,7 +643,7 @@ function buildKPI(){
     const arrow = pct > 0 ? '&#9650;' : (pct < 0 ? '&#9660;' : '&#8226;');
 
     const tile = document.createElement('div');
-    tile.className = 'stat-tile stat-tile-wide';
+    tile.className = 'stat-tile';
     tile.innerHTML =
       '<div class="label">' + spec.label +
         '<span class="gri-tag" title="GRI ' + spec.gri + '">' + spec.gri + '</span>' +
@@ -669,16 +673,103 @@ function buildKPI(){
           ' &middot; <b class="' + (onTrack ? 'good' : 'bad') + '">' + statusText + '</b>';
         tile.appendChild(tn);
 
-        // Small status badge in the tile's empty top-right corner -- a quick at-a-glance
-        // read that doesn't require reading the full sentence below.
+        // Small status badge in the tile's top-right corner -- a quick at-a-glance read
+        // that doesn't require reading the full sentence below. Kept short ("Achieved")
+        // rather than restating the percentage, since the tile is normal-width now (no
+        // longer spans the full row) and the full number already lives in the note.
+        tile.classList.add('has-badge');
         const badge = document.createElement('span');
         badge.className = 'status-badge ' + (onTrack ? 'good' : 'bad');
-        badge.textContent = (onTrack ? '✓ ' : '') + '−' + actualReductionPct.toFixed(2) + '% vs ' + spec.target.baseYear;
+        // Kept short (no checkmark glyph) so it doesn't crowd the GRI tag next to it --
+        // "Withdrawal Intensity" plus its "303-3" tag already runs close to the tile's
+        // right edge, leaving less room for the badge than the shorter METRICS labels.
+        badge.innerHTML = onTrack ? 'Achieved' : 'Not yet';
         tile.appendChild(badge);
+      }
+    } else if(spec.baselineNote){
+      // No stated Group target for this ratio -- just a plain informational comparison
+      // against the baseline year, styled the same as a target-note but without an
+      // on-track/achieved judgment (there's no target to be on-track against).
+      const baseIdx = DATA.years.indexOf(spec.baselineNote.baseYear);
+      const baseline = baseIdx >= 0 ? series[baseIdx] : null;
+      if(baseline){
+        const changePct = (cur - baseline) / baseline * 100; // negative = decreased
+        const improved = changePct <= 0; // lower intensity is better
+        const tn = document.createElement('div');
+        tn.className = 'target-note';
+        tn.innerHTML = '<b class="' + (improved ? 'good' : 'bad') + '">' +
+          (changePct <= 0 ? '−' : '+') + Math.abs(changePct).toFixed(2) + '% vs ' + spec.baselineNote.baseYear +
+          '</b> baseline';
+        tile.appendChild(tn);
       }
     }
     row.appendChild(tile);
   });
+
+  // ---- Water Reuse & Recycle Rate (GRI 303-3) ----
+  // Direct counterpart to the Waste dashboard's Diversion Rate card: reused+recycled
+  // water as a share of total withdrawal. Renders inline ("20.93%"), matching how the
+  // GHG dashboard's Renewable % KPI displays a percentage, rather than pushing "%" down
+  // to a separate unit line the way the m3/MB ratio KPIs do.
+  (function(){
+    const W = DATA.group.withdrawal, R = DATA.group.recycled;
+    if(!W || !R || !W.length) return;
+    const rate = W.map((w,i)=> w ? (R[i] / w * 100) : null);
+    if(rate.some(v=> v === null)) return;
+    const cur = last(rate), prv = prev(rate);
+    const ppDelta = prv !== undefined ? (cur - prv) : 0;
+    const deltaClass = ppDelta > 0 ? 'good' : (ppDelta < 0 ? 'bad' : 'neutral');
+    const arrow = ppDelta > 0 ? '&#9650;' : (ppDelta < 0 ? '&#9660;' : '&#8226;');
+    const curRecycled = last(R);
+    const tile = document.createElement('div');
+    tile.className = 'stat-tile';
+    tile.innerHTML =
+      '<div class="label">Reuse &amp; Recycle Rate' +
+        '<span class="gri-tag" title="GRI 303-3">303-3</span>' +
+        '<span class="label-year">' + last(DATA.years) + '</span></div>' +
+      // Rendered inline ("20.93%"), matching GHG's Renewable % and Waste's Diversion
+      // Rate KPIs -- not pushed to a separate value-unit line the way the m3/MB ratio
+      // KPIs on this same row are.
+      '<div class="value">' + cur.toFixed(2) + '%</div>' +
+      '<div class="delta ' + deltaClass + '">' + arrow + ' ' + Math.abs(ppDelta).toFixed(2) + 'pp YoY</div>' +
+      '<div class="target-note">' + fmtShort(curRecycled, 'm³') + ' reused/recycled' +
+        (prv !== undefined ? ' &middot; <b class="' + deltaClass + '">up from ' + prv.toFixed(2) + '%</b>' : '') +
+        '</div>';
+    row.appendChild(tile);
+  })();
+
+  // ---- Freshwater Withdrawal (GRI 303-3, seawater excluded) ----
+  // Seawater withdrawal doesn't carry the same water-stress implication as freshwater
+  // sources under GRI 303, so this isolates the freshwater share of the existing
+  // Water Withdrawal figure using the same source-breakdown data already powering the
+  // Water Source Detail chart -- no new data, just a different cut of it.
+  (function(){
+    const W = DATA.group.withdrawal;
+    if(!W || !W.length) return;
+    const seaSeries = DATA.years.map(y=>{
+      const d = DATA.detail.group[String(y)];
+      return d && d.withdrawal ? (d.withdrawal.sea || 0) : null;
+    });
+    if(seaSeries.some(v=> v === null)) return;
+    const fresh = W.map((w,i)=> w - seaSeries[i]);
+    const cur = last(fresh), prv = prev(fresh);
+    const pct = prv ? ((cur-prv)/Math.abs(prv)*100) : 0;
+    const deltaClass = pct < 0 ? 'good' : (pct > 0 ? 'bad' : 'neutral');
+    const arrow = pct > 0 ? '&#9650;' : (pct < 0 ? '&#9660;' : '&#8226;');
+    const curSea = last(seaSeries);
+    const curW = last(W);
+    const tile = document.createElement('div');
+    tile.className = 'stat-tile';
+    tile.innerHTML =
+      '<div class="label">Freshwater Withdrawal' +
+        '<span class="gri-tag" title="GRI 303-3">303-3</span>' +
+        '<span class="label-year">' + last(DATA.years) + '</span></div>' +
+      '<div class="value">' + fmtShort(cur, 'm³') + '</div>' +
+      '<div class="delta ' + deltaClass + '">' + arrow + ' ' + Math.abs(pct).toFixed(2) + '% YoY</div>' +
+      '<div class="target-note">' + (curW ? (cur/curW*100).toFixed(1) : '0') + '% of total withdrawal' +
+        ' &middot; seawater ' + fmtShort(curSea, 'm³') + ' excluded</div>';
+    row.appendChild(tile);
+  })();
 }
 
 // ---------- Main detail line chart ----------
