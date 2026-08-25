@@ -750,9 +750,16 @@ function axCountUp(el, ms){
     if(grouped) s = s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     return s;
   };
-  const dur = ms || 900, t0 = performance.now();
+  // 1500ms rather than the ~900 this started at: at the shorter setting the figure had
+  // essentially landed before the eye reached it, so the count read as a flicker instead of
+  // a count. Slow enough to follow, still short enough that nobody waits for it.
+  const dur = ms || 1500, t0 = performance.now();
   function step(now){
-    const p = Math.min((now - t0) / dur, 1);
+    // Clamped at BOTH ends. requestAnimationFrame hands back the timestamp of the frame's
+    // start, which can predate the performance.now() captured just above it -- so the first
+    // frame could arrive with a slightly negative progress and paint a negative figure
+    // ("-8.98M m³") for one frame before counting up. Flooring at 0 removes that flash.
+    const p = Math.min(Math.max((now - t0) / dur, 0), 1);
     // ease-out cubic: fast start, gentle settle -- the number lands rather than stopping dead
     const eased = 1 - Math.pow(1 - p, 3);
     node.nodeValue = before + fmt(target * eased) + after;
