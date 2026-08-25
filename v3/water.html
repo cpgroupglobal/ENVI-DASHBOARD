@@ -810,7 +810,26 @@ function axReveal(root){
 // year or metric rebuilds these boxes from scratch, so without this every card would spring
 // back open the moment someone changed the year -- which defeats the point of collapsing a
 // long page down to the few sections you actually want to read.
-const AX_COLLAPSED = new Set();
+// key -> true if the viewer collapsed it, false if they opened it. A key that is absent
+// falls back to axDefaultCollapsed(); once the viewer touches a heading their choice wins
+// from then on, including across year/metric switches that rebuild the card.
+const AX_STATE = new Map();
+
+// The page opens with its FIRST section expanded and everything below it collapsed. The
+// headline KPI tiles sit outside the cards, so they stay visible either way -- the reason
+// for leaving one section open is that seeing an open ▾ card next to closed ▸ ones is what
+// tells a first-time viewer the headings are tappable at all.
+function axDefaultCollapsed(box, boxSel){
+  // Breakdown cards are the deep detail; they start closed wherever they appear.
+  if(boxSel === '.subbreak-box') return true;
+  const parent = box.parentNode;
+  // A .card nested inside another card is the BU "Detail Breakdown", which only appears
+  // once the viewer has already clicked into a business unit -- collapsing that would hide
+  // the very thing they just asked to see.
+  if(!parent || !parent.classList || !parent.classList.contains('tabpanel')) return false;
+  const cards = Array.prototype.filter.call(parent.children, c => c.classList.contains('card'));
+  return cards.indexOf(box) > 0;   // first card in the tab stays open, the rest start closed
+}
 
 // Titles carry a running total on some cards ("Biomass by Type · total 5.47M"), and that
 // total changes with the selected year. Key on the part before the separator so the same
@@ -863,7 +882,7 @@ function axWireSection(scope, boxSel, titleSel){
     title.setAttribute('tabindex', '0');
 
     const key = axKey(title);
-    const startCollapsed = AX_COLLAPSED.has(key);
+    const startCollapsed = AX_STATE.has(key) ? AX_STATE.get(key) : axDefaultCollapsed(box, boxSel);
     box.classList.toggle('ax-collapsed', startCollapsed);
     title.setAttribute('aria-expanded', startCollapsed ? 'false' : 'true');
 
@@ -871,7 +890,7 @@ function axWireSection(scope, boxSel, titleSel){
       const open = title.getAttribute('aria-expanded') === 'true';
       title.setAttribute('aria-expanded', open ? 'false' : 'true');
       box.classList.toggle('ax-collapsed', open);
-      if(open) AX_COLLAPSED.add(key); else AX_COLLAPSED.delete(key);
+      AX_STATE.set(key, open);   // `open` was the state BEFORE the click, i.e. now-collapsed
       // Re-opening replays the chart reveal inside this card only, so an expanded section
       // arrives the same way it does on first load instead of just appearing.
       if(!open) requestAnimationFrame(()=> axReveal(box));
