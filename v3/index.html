@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CP Group — Environmental Performance 2020–2025</title>
-<meta name="description" content="CP Group Sustainability Development — Environmental Performance 2020–2025. Climate &amp; Net Zero, Circular Economy, Water.">
+<meta name="description" content="CP Group Sustainability Development — Environmental Performance 2020–2025. Climate Resilience, Circular Economy, Water Stewardship.">
 <meta name="theme-color" content="#0b1a14">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.png">
@@ -51,11 +51,34 @@
 
   /* ---------- Title panel ---------- */
   .hero{
+    position:relative;
+    overflow:hidden;
+    isolation:isolate;
     background:linear-gradient(135deg, rgba(8,48,31,.94) 0%, rgba(20,107,63,.88) 100%);
     border-radius:var(--card-radius);
     padding:clamp(20px,4vw,38px);
     box-shadow:0 10px 40px rgba(0,0,0,.45);
     border:1px solid rgba(255,255,255,.10);
+  }
+  .hero .bg-video{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+    z-index:0;
+  }
+  .hero::after{
+    content:"";
+    position:absolute; inset:0;
+    background:linear-gradient(90deg, rgba(3,10,6,.88) 0%, rgba(3,10,6,.62) 42%, rgba(3,10,6,.22) 72%, rgba(3,10,6,.08) 100%);
+    z-index:1;
+  }
+  .hero > *:not(.bg-video){
+    position:relative;
+    z-index:2;
+    text-shadow:0 1px 10px rgba(0,0,0,.55);
+  }
+  .hero img.logo{
+    filter:brightness(0) invert(1) drop-shadow(0 1px 6px rgba(0,0,0,.5));
   }
   .hero img.logo{
     width:clamp(52px,7vw,74px);
@@ -94,7 +117,12 @@
     grid-template-columns:1fr;
     gap:clamp(12px,2vw,18px);
   }
-  @media (min-width:760px){
+  /* Three-across only once each card is wide enough to hold its title on ONE line.
+     Measured: at 960px the cards are 284px and "WATER STEWARDSHIP" still wraps; at
+     1000px (297px cards) all three titles and subtitles fit on a single line each.
+     Below that the cards stack full-width instead -- an iPad in portrait then shows
+     three big clean cards rather than three cramped columns with two-line titles. */
+  @media (min-width:1000px){
     .wrap{ justify-content:center; }
     .cards{ grid-template-columns:repeat(3,1fr); }
   }
@@ -178,12 +206,18 @@
     padding-top:2px;
   }
   footer .dot{ opacity:.5; margin:0 6px; }
+  @media (prefers-reduced-motion: reduce){
+    .hero .bg-video{ display:none; }
+  }
 </style>
 </head>
 <body>
 <div class="wrap">
 
   <header class="hero">
+    <video class="bg-video" autoplay muted loop playsinline poster="bg-earth.jpg" aria-hidden="true">
+      <source src="bg-video.mp4" type="video/mp4">
+    </video>
     <img class="logo" src="cp-logo.png" alt="C.P. Group">
     <p class="eyebrow">Sustainability Development</p>
     <h1>ENVIRONMENTAL<span class="light">PERFORMANCE</span></h1>
@@ -195,7 +229,7 @@
       <img class="shot" src="card-climate.jpg" alt="" loading="eager" decoding="async">
       <span class="label">
         <span class="txt">
-          <span class="name">Climate &amp; Net Zero</span>
+          <span class="name">CLIMATE RESILIENCE</span>
           <span class="sub">GHG emissions &middot; Energy &middot; Renewable</span>
         </span>
         <span class="arrow" aria-hidden="true">&rsaquo;</span>
@@ -206,7 +240,7 @@
       <img class="shot" src="card-circular.jpg" alt="" loading="lazy" decoding="async">
       <span class="label">
         <span class="txt">
-          <span class="name">Circular Economy</span>
+          <span class="name">CIRCULAR ECONOMY</span>
           <span class="sub">Waste &middot; Diversion &middot; Zero to landfill</span>
         </span>
         <span class="arrow" aria-hidden="true">&rsaquo;</span>
@@ -217,7 +251,7 @@
       <img class="shot" src="card-water.jpg" alt="" loading="lazy" decoding="async">
       <span class="label">
         <span class="txt">
-          <span class="name">Water</span>
+          <span class="name">WATER STEWARDSHIP</span>
           <span class="sub">Withdrawal &middot; Discharge &middot; Reuse</span>
         </span>
         <span class="arrow" aria-hidden="true">&rsaquo;</span>
