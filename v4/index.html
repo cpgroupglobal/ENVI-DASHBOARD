@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CP Group — Environmental Performance 2020–2025</title>
-<meta name="description" content="CP Group Sustainability Development — Environmental Performance 2020–2025. Climate &amp; Net Zero, Circular Economy, Water.">
+<meta name="description" content="CP Group Sustainability Development — Environmental Performance 2020–2025. Climate Resilience, Circular Economy, Water Stewardship.">
 <meta name="theme-color" content="#0b1a14">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon.png">
@@ -117,7 +117,12 @@
     grid-template-columns:1fr;
     gap:clamp(12px,2vw,18px);
   }
-  @media (min-width:760px){
+  /* Three-across only once each card is wide enough to hold its title on ONE line.
+     Measured: at 960px the cards are 284px and "WATER STEWARDSHIP" still wraps; at
+     1000px (297px cards) all three titles and subtitles fit on a single line each.
+     Below that the cards stack full-width instead -- an iPad in portrait then shows
+     three big clean cards rather than three cramped columns with two-line titles. */
+  @media (min-width:1000px){
     .wrap{ justify-content:center; }
     .cards{ grid-template-columns:repeat(3,1fr); }
   }
@@ -224,7 +229,7 @@
       <img class="shot" src="card-climate.jpg" alt="" loading="eager" decoding="async">
       <span class="label">
         <span class="txt">
-          <span class="name">Climate &amp; Net Zero</span>
+          <span class="name">CLIMATE RESILIENCE</span>
           <span class="sub">GHG emissions &middot; Energy &middot; Renewable</span>
         </span>
         <span class="arrow" aria-hidden="true">&rsaquo;</span>
@@ -235,7 +240,7 @@
       <img class="shot" src="card-circular.jpg" alt="" loading="lazy" decoding="async">
       <span class="label">
         <span class="txt">
-          <span class="name">Circular Economy</span>
+          <span class="name">CIRCULAR ECONOMY</span>
           <span class="sub">Waste &middot; Diversion &middot; Zero to landfill</span>
         </span>
         <span class="arrow" aria-hidden="true">&rsaquo;</span>
@@ -246,7 +251,7 @@
       <img class="shot" src="card-water.jpg" alt="" loading="lazy" decoding="async">
       <span class="label">
         <span class="txt">
-          <span class="name">Water</span>
+          <span class="name">WATER STEWARDSHIP</span>
           <span class="sub">Withdrawal &middot; Discharge &middot; Reuse</span>
         </span>
         <span class="arrow" aria-hidden="true">&rsaquo;</span>
