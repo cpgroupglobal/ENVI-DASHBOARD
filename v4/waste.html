@@ -390,6 +390,93 @@ footer{ padding: 10px 16px 4px; font-size:11px; color: var(--text-muted); line-h
   .bar-list{ grid-template-columns: 1fr 1fr 1fr; }
   .bu-detail .bar-list{ grid-template-columns: none; }
 }
+/* ---------- Entrance animation ("ลูกเล่น") ----------
+   Everything here is wrapped in prefers-reduced-motion:no-preference, so a viewer who has
+   asked their OS to reduce motion gets the finished chart immediately with no movement at
+   all -- the classes below simply do nothing for them, and no JS branch is needed.
+   These run on first paint and when the user switches year / metric / tab; they are
+   deliberately NOT replayed on the theme toggle, which redraws every chart and would
+   otherwise re-animate the whole page every time someone flips to dark mode. */
+@media (prefers-reduced-motion: no-preference){
+  /* KPI tiles rise in, staggered left-to-right. The delay is set inline per tile from JS
+     (--ax-i) so the stagger works for any number of tiles -- GHG has 6, Water has 8. */
+  .ax-rise{ animation: axRise .5s cubic-bezier(.22,.61,.36,1) both;
+            animation-delay: calc(var(--ax-i, 0) * 60ms); }
+  @keyframes axRise{ from{ opacity:0; transform:translateY(12px); } to{ opacity:1; transform:none; } }
+
+  /* Donut arcs draw themselves on. pathLength="100" (set from JS) normalises every arc to
+     a length of 100 regardless of its real radius/sweep, so one fixed dash length animates
+     them all -- no per-path measuring. */
+  .ax-draw{ stroke-dasharray: 100; animation: axDraw .85s cubic-bezier(.32,.72,.36,1) both; }
+  @keyframes axDraw{ from{ stroke-dashoffset: 100; } to{ stroke-dashoffset: 0; } }
+
+  /* Bar/line charts reveal bottom-up. A clip-path wipe on the whole SVG reads exactly like
+     stacked bars growing out of the axis, and -- unlike scaling each <rect> -- it keeps the
+     segments of a stack locked together and carries the value labels and trend line along
+     with them, with no geometry maths and nothing to re-tune per chart. */
+  .ax-wipe{ animation: axWipe .8s cubic-bezier(.22,.61,.36,1) both; }
+  @keyframes axWipe{ from{ clip-path: inset(100% 0 0 0); } to{ clip-path: inset(0 0 0 0); } }
+
+  /* Re-render fade: switching year / metric / tab replaces the panel's contents outright,
+     which otherwise snaps. This softens the swap without delaying the new content. */
+  .ax-fade{ animation: axFade .34s ease-out both; }
+  @keyframes axFade{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+}
+
+/* ---------- Collapsible breakdown cards ----------
+   Deliberately OUTSIDE the prefers-reduced-motion block: collapsing is a control, not
+   decoration, so it must work for every viewer. Only the easing is motion; a
+   reduced-motion viewer still gets the same open/close, just instantly. */
+.ax-toggle{
+  display:flex; align-items:center; gap:6px;
+  cursor:pointer; user-select:none; -webkit-user-select:none;
+  -webkit-tap-highlight-color: transparent;
+  /* Grows the tap target from the text's own ~20px line box to ~36px, which is what a
+     finger needs on a phone. The negative top margin pulls the heading back onto the
+     baseline it sat on before, so the extra height is hit area only and nothing on the
+     page visibly moves. */
+  padding:8px 0 4px;
+  margin-top:-8px;
+}
+.subbreak-title.ax-toggle{ margin-bottom:0; }   /* 4px padding-bottom above replaces it */
+.card > h2.ax-toggle{ margin-bottom:6px; }      /* + 4px padding = the original 10px gap */
+.ax-toggle:hover{ color:var(--text-primary); }
+.ax-toggle:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
+.ax-caret{
+  margin-left:auto; flex:none;
+  font-size:11px; line-height:1;
+  color:var(--text-muted);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+}
+/* Direct-child selectors only: an outer collapsed card must not rotate the carets of the
+   inner cards it happens to contain. */
+.ax-collapsed > .ax-toggle .ax-caret{ transform: rotate(-90deg); }
+
+/* 1fr -> 0fr animates to the content's real height without hard-coding a max-height that
+   would have to be re-guessed for every card (these range from a 3-row bar list to a
+   10-row year matrix). The inner wrapper is what actually clips. */
+.subbreak-body{
+  display:grid; grid-template-rows:1fr;
+  transition: grid-template-rows .3s cubic-bezier(.4,0,.2,1), opacity .22s ease;
+}
+.subbreak-inner{ overflow:hidden; min-height:0; }
+/* overflow:hidden is what clips the body as it collapses, but it also clips a first child
+   that pulls itself upward with a negative top margin -- which the year-matrix hint line
+   ("GJ (unit per row)") does, so it lost its top few pixels once wrapped. The heading's own
+   padding-bottom now provides that gap instead. */
+/* !important because that hint carries its margin as an inline style, which a plain rule
+   here would lose to. */
+.subbreak-inner > :first-child{ margin-top:0 !important; }
+.ax-collapsed > .subbreak-body{ grid-template-rows:0fr; opacity:0; }
+/* Collapsed, the card is just its own title bar — tighten it so a run of collapsed cards
+   reads as a compact list of headings rather than a column of half-empty boxes. */
+.subbreak-box.ax-collapsed{ padding-bottom:6px; }
+.subbreak-box.ax-collapsed > .subbreak-title.ax-toggle{ margin-bottom:0; }
+.card.ax-collapsed{ padding-bottom:10px; }
+.card.ax-collapsed > h2.ax-toggle{ margin-bottom:0; }
+@media (prefers-reduced-motion: reduce){
+  .subbreak-body, .ax-caret{ transition:none; }
+}
 </style>
 </head>
 <body>
@@ -621,6 +708,221 @@ function intensitySeries(key){
 }
 
 // ---------- KPI row ----------
+// ---------- Entrance animation helpers ----------
+// One generic pass that keys off classes the page already produces (.stat-tile, .donut,
+// chart <svg>), so the same block drops into the Water and Waste dashboards unchanged --
+// no per-card or per-chart wiring to keep in sync across the three build scripts.
+// Build-time switch. The same source builds two variants: the full one for /v3/, and a
+// plain one for /v4/ that keeps every data fix but none of the entrance animation or the
+// collapsible headings -- so there is a fallback to point executives at if they dislike the
+// new behaviour, without having to rebuild anything by hand.
+const AX_ENABLED = false;
+const AX_MOTION = AX_ENABLED && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+// Set while the theme toggle redraws every chart: that is a repaint of content the viewer
+// is already looking at, not an entrance, so it should not re-run the animations.
+let AX_SUPPRESS = false;
+
+// Re-adding a class does not restart a CSS animation unless the element is reflowed in
+// between, so every replay goes through here.
+function axReplay(el, cls){
+  el.classList.remove(cls);
+  void el.getBoundingClientRect();
+  el.classList.add(cls);
+}
+
+// Counts the first number inside `el` up from zero, preserving whatever text surrounds it
+// ("58.56M GJ" counts the 58.56 and keeps "M GJ"; "18.44%" keeps the "%") and leaving any
+// child markup -- e.g. the <span class="value-unit"> on the intensity tiles -- untouched,
+// by rewriting only the single text node the number lives in.
+function axCountUp(el, ms){
+  const node = Array.from(el.childNodes).find(n => n.nodeType === 3 && /\d/.test(n.nodeValue));
+  if(!node) return;
+  const raw = node.nodeValue;
+  const m = raw.match(/-?\d[\d,]*(\.\d+)?/);
+  if(!m) return;
+  const target = parseFloat(m[0].replace(/,/g, ''));
+  if(!isFinite(target)) return;
+  const decimals = m[1] ? m[1].length - 1 : 0;
+  const grouped = m[0].indexOf(',') !== -1;
+  const before = raw.slice(0, m.index), after = raw.slice(m.index + m[0].length);
+  const fmt = v => {
+    let s = v.toFixed(decimals);
+    if(grouped) s = s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return s;
+  };
+  // 1500ms rather than the ~900 this started at: at the shorter setting the figure had
+  // essentially landed before the eye reached it, so the count read as a flicker instead of
+  // a count. Slow enough to follow, still short enough that nobody waits for it.
+  const dur = ms || 1500, t0 = performance.now();
+  function step(now){
+    // Clamped at BOTH ends. requestAnimationFrame hands back the timestamp of the frame's
+    // start, which can predate the performance.now() captured just above it -- so the first
+    // frame could arrive with a slightly negative progress and paint a negative figure
+    // ("-8.98M m³") for one frame before counting up. Flooring at 0 removes that flash.
+    const p = Math.min(Math.max((now - t0) / dur, 0), 1);
+    // ease-out cubic: fast start, gentle settle -- the number lands rather than stopping dead
+    const eased = 1 - Math.pow(1 - p, 3);
+    node.nodeValue = before + fmt(target * eased) + after;
+    if(p < 1) requestAnimationFrame(step);
+    else node.nodeValue = raw;   // restore the exact original string, never a re-rounded one
+  }
+  requestAnimationFrame(step);
+}
+
+// Call after any render that should animate in. `root` limits the pass to the panel that
+// actually changed, so switching the year inside one card leaves the rest of the page still.
+function axReveal(root){
+  if(!AX_MOTION || AX_SUPPRESS) return;
+  const scope = root || document;
+
+  scope.querySelectorAll('.stat-tile').forEach((t, i) => {
+    t.style.setProperty('--ax-i', i);
+    axReplay(t, 'ax-rise');
+  });
+
+  // Donut arcs are drawn one after another, each taking a slice of the total sweep time in
+  // proportion to how long it actually is, so the ring fills as a single continuous stroke
+  // travelling round the circle. Animating every arc at once instead (same delay, same
+  // duration) makes them grow simultaneously from their own start angles, which reads as
+  // several disconnected fragments rather than one donut being drawn.
+  const arcs = Array.from(scope.querySelectorAll('.donut path, .donut circle'));
+  arcs.forEach(a => a.setAttribute('pathLength', '100'));
+  const lens = arcs.map(a => (a.getTotalLength ? a.getTotalLength() : 1) || 1);
+  const totalLen = lens.reduce((s, v) => s + v, 0) || 1;
+  const SWEEP = 900;
+  let acc = 0;
+  arcs.forEach((a, i) => {
+    a.style.animationDelay = (acc / totalLen * SWEEP).toFixed(0) + 'ms';
+    // floor the per-arc duration so a sliver still reads as a stroke, not a pop
+    a.style.animationDuration = Math.max(110, lens[i] / totalLen * SWEEP).toFixed(0) + 'ms';
+    acc += lens[i];
+    axReplay(a, 'ax-draw');
+  });
+
+  // Any chart-sized SVG gets the bottom-up wipe. Filtering by rendered height keeps the
+  // small inline glyphs (the leaf/flame/cloud icons on the year-matrix cards) out of it
+  // without needing a dedicated class on every chart the three dashboards build.
+  scope.querySelectorAll('svg').forEach(s => {
+    if(s.classList.contains('donut')) return;
+    if(s.getBoundingClientRect().height < 80) return;
+    axReplay(s, 'ax-wipe');
+  });
+
+  scope.querySelectorAll('.stat-tile .value').forEach(v => axCountUp(v));
+  scope.querySelectorAll('.ax-num').forEach(v => axCountUp(v));
+}
+
+// ---------- Collapsible breakdown cards ----------
+// Which cards the viewer has collapsed, keyed by the stable part of the title. Switching
+// year or metric rebuilds these boxes from scratch, so without this every card would spring
+// back open the moment someone changed the year -- which defeats the point of collapsing a
+// long page down to the few sections you actually want to read.
+// key -> true if the viewer collapsed it, false if they opened it. A key that is absent
+// falls back to axDefaultCollapsed(); once the viewer touches a heading their choice wins
+// from then on, including across year/metric switches that rebuild the card.
+const AX_STATE = new Map();
+
+// The page opens with its FIRST section expanded and everything below it collapsed. The
+// headline KPI tiles sit outside the cards, so they stay visible either way -- the reason
+// for leaving one section open is that seeing an open ▾ card next to closed ▸ ones is what
+// tells a first-time viewer the headings are tappable at all.
+function axDefaultCollapsed(box, boxSel){
+  // Breakdown cards are the deep detail; they start closed wherever they appear.
+  if(boxSel === '.subbreak-box') return true;
+  const parent = box.parentNode;
+  // A .card nested inside another card is the BU "Detail Breakdown", which only appears
+  // once the viewer has already clicked into a business unit -- collapsing that would hide
+  // the very thing they just asked to see.
+  if(!parent || !parent.classList || !parent.classList.contains('tabpanel')) return false;
+  const cards = Array.prototype.filter.call(parent.children, c => c.classList.contains('card'));
+  return cards.indexOf(box) > 0;   // first card in the tab stays open, the rest start closed
+}
+
+// Titles carry a running total on some cards ("Biomass by Type · total 5.47M"), and that
+// total changes with the selected year. Key on the part before the separator so the same
+// card keeps its collapsed state across year switches.
+function axKey(title){
+  return (title.textContent || '').split('·')[0].trim().toUpperCase();
+}
+
+// Both levels of heading collapse the same way: the big section headings (<h2> inside a
+// .card -- "Energy & GHG Source Detail", "By Business Unit", ...) and the small breakdown
+// cards inside them (.subbreak-title -- "Fossil by Type", "Scope 1 by Source", ...). Water
+// and Waste build no .subbreak-box at all, so covering .card here is what gives those two
+// dashboards the same behaviour rather than nothing.
+const AX_SECTIONS = [['.subbreak-box', '.subbreak-title'], ['.card', 'h2']];
+
+function axCollapsible(root){
+  if(!AX_ENABLED) return;
+  const scope = root || document;
+  AX_SECTIONS.forEach(([boxSel, titleSel]) => axWireSection(scope, boxSel, titleSel));
+}
+
+function axWireSection(scope, boxSel, titleSel){
+  scope.querySelectorAll(boxSel).forEach(box => {
+    if(box.dataset.axCollapse) return;    // already wired on a previous pass
+    const title = box.querySelector(titleSel);
+    // Only a heading that is a DIRECT child owns this box -- otherwise a .card would grab
+    // the .subbreak-title of a breakdown card nested inside it.
+    if(!title || title.parentNode !== box) return;
+    box.dataset.axCollapse = '1';
+
+    // Everything after the title becomes the collapsible body. Done by moving the existing
+    // nodes rather than by changing how the cards are built, so subBarList, yearMatrix and
+    // any future card shape all become collapsible without being touched individually.
+    const body = document.createElement('div');
+    body.className = 'subbreak-body';
+    const inner = document.createElement('div');
+    inner.className = 'subbreak-inner';
+    while(title.nextSibling) inner.appendChild(title.nextSibling);
+    body.appendChild(inner);
+    box.appendChild(body);
+
+    const caret = document.createElement('span');
+    caret.className = 'ax-caret';
+    caret.setAttribute('aria-hidden', 'true');
+    caret.textContent = '▾';
+    title.appendChild(caret);
+
+    title.classList.add('ax-toggle');
+    title.setAttribute('role', 'button');
+    title.setAttribute('tabindex', '0');
+
+    const key = axKey(title);
+    const startCollapsed = AX_STATE.has(key) ? AX_STATE.get(key) : axDefaultCollapsed(box, boxSel);
+    box.classList.toggle('ax-collapsed', startCollapsed);
+    title.setAttribute('aria-expanded', startCollapsed ? 'false' : 'true');
+
+    function toggle(){
+      const open = title.getAttribute('aria-expanded') === 'true';
+      title.setAttribute('aria-expanded', open ? 'false' : 'true');
+      box.classList.toggle('ax-collapsed', open);
+      AX_STATE.set(key, open);   // `open` was the state BEFORE the click, i.e. now-collapsed
+      // Re-opening replays the chart reveal inside this card only, so an expanded section
+      // arrives the same way it does on first load instead of just appearing.
+      if(!open) requestAnimationFrame(()=> axReveal(box));
+    }
+
+    title.addEventListener('click', toggle);
+    title.addEventListener('keydown', e => {
+      if(e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar'){ e.preventDefault(); toggle(); }
+    });
+  });
+}
+
+// Called at the end of every renderDetailBreakdown path (the Summary card, a BU page, and
+// each early-return branch). Kept as one function so all three build scripts share the
+// identical call site and the behaviour cannot drift between dashboards.
+function axAfterRender(wrap){
+  axCollapsible(wrap);   // unconditional: a control, not an animation
+  if(AX_MOTION && !AX_SUPPRESS){
+    axReplay(wrap, 'ax-fade');
+    // rAF: the SVGs were only just appended and have no measured height yet, which
+    // axReveal's chart-vs-icon size filter depends on.
+    requestAnimationFrame(()=> axReveal(wrap));
+  }
+}
+
 function buildKPI(){
   const row = document.getElementById('kpiRow');
   row.innerHTML = '';
@@ -1308,6 +1610,7 @@ function renderDetailBreakdown(container, det, metric, multiYearDict, year, isGr
     wrap.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">No detail available for this metric</div>';
   }
   container.appendChild(wrap);
+  axAfterRender(wrap);
 }
 
 function initOverviewDetail(){
@@ -1837,7 +2140,13 @@ function initTabs(){
       tabBtns.forEach(b=>b.setAttribute('aria-selected','false'));
       btn.setAttribute('aria-selected','true');
       document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
-      document.getElementById('panel-'+btn.dataset.tab).classList.add('active');
+      const panel = document.getElementById('panel-'+btn.dataset.tab);
+      panel.classList.add('active');
+      // Cards built while this panel was hidden still need wiring the first time it opens.
+      axCollapsible(panel);
+      // The panel was display:none until a moment ago, so its charts had no measurable
+      // size; reveal on the next frame, once layout has actually run.
+      requestAnimationFrame(()=> axReveal(panel));
       ['buYearSeg'].forEach(id=>{
         const el = document.getElementById(id);
         if(el) el.scrollLeft = el.scrollWidth;
@@ -1868,9 +2177,11 @@ function initTheme(redrawFns){
     else { mode = 'dark'; root.setAttribute('data-theme','dark'); }
     // SVG marks bake in resolved colors, so every chart has to be redrawn — including the
     // BU/Business Group lists, whose expanded detail donuts would otherwise keep old colors.
+    AX_SUPPRESS = true;      // a recolour of what is already on screen, not an entrance
     buildKPI();
     drawMainChart();
     (redrawFns||[]).forEach(fn=>{ if(fn) fn(); });
+    AX_SUPPRESS = false;
   });
 }
 
@@ -1885,7 +2196,22 @@ initTabs();
 initTableToggles();
 initTheme([renderOverviewDetail, renderBU]);
 
-window.addEventListener('resize', ()=>{ drawMainChart(); });
+// Wire every breakdown card on the page for collapse/expand (both tabs, including the
+// Business Units panel that is still display:none at this point).
+axCollapsible();
+
+// First paint: animate the Summary tab in. rAF so every chart has been laid out and has a
+// real height before axReveal decides which SVGs are charts and which are inline icons.
+requestAnimationFrame(()=> axReveal(document.getElementById('panel-overview')));
+
+// A resize redraws the charts from scratch; that is a re-layout of what the viewer already
+// has on screen, so it must not replay the entrance animations (rotating a phone would
+// otherwise re-run the whole reveal).
+window.addEventListener('resize', ()=>{
+  AX_SUPPRESS = true;
+  drawMainChart();
+  AX_SUPPRESS = false;
+});
 </script>
 </body>
 </html>
