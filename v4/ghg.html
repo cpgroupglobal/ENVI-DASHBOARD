@@ -28,6 +28,9 @@
   --critical:       #d03b3b;
   --target-line:    #B87A10;
   --surface-alt:    #ececeb;
+  /* GHG Reduction Pathway (waterfall) tokens — distinct from --target-line/--good so all
+     four series (target, BAU, insetting, offset) read apart at a glance. */
+  --bau-line:       #8a8a86;
 
   /* Environmental green ramp — darkest to lightest, validated as an ordinal ramp
      (monotone lightness, adjacent dL >= 0.06, light end clears 2:1 on this surface).
@@ -53,6 +56,7 @@
   --critical:       #e66767;
   --target-line:    #e0a020;
   --surface-alt:    #242423;
+  --bau-line:       #9a9a94;
 
   --shade0:     #0E7048;
   --shade1:     #2C8B57;
@@ -76,6 +80,7 @@
     --critical:       #e66767;
     --target-line:    #e0a020;
     --surface-alt:    #242423;
+    --bau-line:       #9a9a94;
 
     --shade0:     #0E7048;
   --shade1:     #2C8B57;
@@ -1904,6 +1909,22 @@ function initOverviewDetail(){
   return render;
 }
 
+// ---------- GHG Reduction Pathway data (BAU reference line on the SBT chart) ----------
+// Round-tripped with Witthaya (Aug 2026): an earlier version of this also drew solid
+// "Unabated Emission" bars for 2026-2030 plus Insetting/Offset bars below the axis and a
+// "Reduction by Lever" breakdown card — all of that was tried, mocked up, and then
+// explicitly asked to be removed as too much for this chart. What survived: the BAU
+// (no-action) reference line only, layered onto the ORIGINAL dashed-outline-box chart.
+// Static planning data from the roadmap table Witthaya supplied, not derived from the
+// workbook, so it lives here as a plain JS const rather than flowing through
+// dashboard_data.json.
+const GHG_REDUCTION = {
+  // BAU (no reduction action), tCO2e millions — rises with projected business growth,
+  // unlike Waste's flat single-number BAU. 2021 has no BAU figure of its own (it IS the
+  // baseline actual), so the line starts from the 2021 actual and only diverges from 2022.
+  bau: { 2021:6.45, 2022:6.71, 2023:6.99, 2024:7.28, 2025:7.57, 2026:7.89, 2027:8.21, 2028:8.55, 2029:8.90, 2030:9.26 },
+};
+
 // ---------- GHG vs Science-based Target composite chart ----------
 function buildSBTChart(){
   const badge = document.getElementById('sbtBadge');
@@ -2018,13 +2039,16 @@ function buildSBTChart(){
     legend.innerHTML =
       '<span><span style="display:inline-block;width:9px;height:9px;background:'+resolveColor('--shade0')+';border-radius:2px;margin-right:4px;"></span>Scope 1</span>'+
       '<span><span style="display:inline-block;width:9px;height:9px;background:'+resolveColor('--shade1')+';border-radius:2px;margin-right:4px;"></span>Scope 2</span>'+
-      '<span><span style="display:inline-block;width:9px;height:2px;background:'+resolveColor('--target-line')+';margin-right:4px;vertical-align:middle;"></span>Target (−42% by 2030)</span>';
+      '<span><span style="display:inline-block;width:9px;height:2px;background:'+resolveColor('--target-line')+';margin-right:4px;vertical-align:middle;"></span>Target (−42% by 2030)</span>'+
+      '<span><span style="display:inline-block;width:14px;height:2px;background:'+resolveColor('--bau-line')+';margin-right:4px;vertical-align:middle;"></span>BAU (no action)</span>';
     body.appendChild(legend);
 
     body.appendChild(Object.assign(document.createElement('div'), {
       className:'detail-note',
-      textContent:'Bars = actual Scope 1 + Scope 2 (2021–2025); dotted boxes are the remaining years, drawn at their target height. The dotted line is the SBTi annual reduction path down to the 2030 goal — pick a year above to see that year’s target and how far actual sat from it.'
+      textContent:'Bars = actual Scope 1 + Scope 2 (2021–2025); dotted boxes are the remaining years, drawn at their target height. The dotted orange line is the SBTi annual reduction path down to the 2030 goal; the dashed grey line is BAU — projected emissions with no reduction action — pick a year above to see that year’s target and how far actual sat from it.'
     }));
+
+    axAfterRender(body);
   }
 
   render();
@@ -2032,29 +2056,38 @@ function buildSBTChart(){
 }
 
 // Actual stacked bars + dotted SBTi target path through 2030, laid out like the Waste
-// zero-landfill chart: unreported years show as dashed outline boxes at target height,
-// and per-year target figures live in the KPI header instead of as labels that collided
-// with the bar totals.
+// zero-landfill chart: unreported years show as dashed outline boxes at target height
+// (each still labelled with that year's target figure — not just 2030, per Witthaya's
+// request when the fuller waterfall version was scaled back), and per-year target figures
+// also live in the KPI header. A BAU (no-action) reference line is layered on top — the one
+// piece that survived from the fuller "GHG Reduction Pathway" version tried earlier (solid
+// Unabated bars + Insetting/Offset bars + a lever breakdown card), which Witthaya asked to
+// remove as too much for this chart. See GHG_REDUCTION above for the BAU figures' source.
 function drawSBTChart(years, s1Vals, s2Vals, actualVals, tPath, goal2030, selectedYear){
   const ns = 'http://www.w3.org/2000/svg';
   const n = years.length;
   const container = document.createElement('div');
   container.className = 'mix-side';
   container.style.margin = '0 0 4px 0';
+  container.style.flex = '1 1 100%';   // full card width: 10 bars need more room than the old 5
 
-  const W=460, H=270, padT=30, padB=24, padL=6, padR=6;
+  const R = GHG_REDUCTION;
+  const bauVals = years.map(y => (R.bau[y]||0) * 1e6);
+  // padR wide enough for the "BAU: 9.26M" end-of-line label.
+  const W=620, H=290, padT=30, padB=24, padL=6, padR=54;
   const plotW = W-padL-padR, plotH = H-padT-padB;
   const svg = document.createElementNS(ns,'svg');
   svg.setAttribute('viewBox','0 0 '+W+' '+H);
   svg.style.width='100%'; svg.style.height='270px'; svg.style.display='block'; svg.style.overflow='visible';
   container.appendChild(svg);
 
-  const maxVal = Math.max(...actualVals.filter(v=>v!=null), ...tPath) * 1.10;
-  const gap = 6;
+  const maxVal = Math.max(...actualVals.filter(v=>v!=null), ...tPath, ...bauVals) * 1.10;
+  const gap = 8;
   const barW = (plotW - gap*(n-1))/n;
   const fs = 9.5;
   const s1Color = resolveColor('--shade0');
   const s2Color = resolveColor('--shade1');
+  const bauColor = resolveColor('--bau-line');
   const secondary = resolveColor('--text-secondary');
   const textPrimary = resolveColor('--text-primary');
   const yOf = v => padT + plotH - (v/maxVal*plotH);
@@ -2114,14 +2147,15 @@ function drawSBTChart(years, s1Vals, s2Vals, actualVals, tPath, goal2030, select
       rect.setAttribute('fill','none'); rect.setAttribute('stroke',secondary);
       rect.setAttribute('stroke-dasharray','2,2'); rect.setAttribute('stroke-width','1');
       svg.appendChild(rect);
-      if(y === 2030){
-        const gl = document.createElementNS(ns,'text');
-        gl.setAttribute('x', x+barW/2); gl.setAttribute('y', barY-5);
-        gl.setAttribute('text-anchor','middle'); gl.setAttribute('font-size',fs); gl.setAttribute('font-weight','800');
-        gl.setAttribute('fill', textPrimary);
-        gl.textContent = (goal2030/1e6).toFixed(2);
-        svg.appendChild(gl);
-      }
+      // Every remaining year gets its target figure, not just 2030 — this is the one
+      // change kept from the fuller pathway version: Witthaya wanted the per-year numbers
+      // to stay visible even after the solid "Unabated" bars themselves were dropped.
+      const gl = document.createElementNS(ns,'text');
+      gl.setAttribute('x', x+barW/2); gl.setAttribute('y', barY-5);
+      gl.setAttribute('text-anchor','middle'); gl.setAttribute('font-size',fs); gl.setAttribute('font-weight','800');
+      gl.setAttribute('fill', textPrimary);
+      gl.textContent = (tPath[i]/1e6).toFixed(2);
+      svg.appendChild(gl);
     }
 
     const yl = document.createElementNS(ns,'text');
@@ -2144,6 +2178,21 @@ function drawSBTChart(years, s1Vals, s2Vals, actualVals, tPath, goal2030, select
     c.setAttribute('r', y===selectedYear ? 3.4 : 2.3); c.setAttribute('fill', resolveColor('--target-line'));
     svg.appendChild(c);
   });
+
+  // BAU (no action) reference line — rises with projected business growth, distinct from
+  // the flat single-number BAU used on the Waste dashboard (see GHG_REDUCTION comment).
+  const bauPts = years.map((y,i)=> xOf(i)+','+yOf(bauVals[i]).toFixed(1));
+  const bauPoly = document.createElementNS(ns,'polyline');
+  bauPoly.setAttribute('points', bauPts.join(' '));
+  bauPoly.setAttribute('fill','none'); bauPoly.setAttribute('stroke', bauColor);
+  bauPoly.setAttribute('stroke-width','1.4'); bauPoly.setAttribute('stroke-dasharray','5,3');
+  svg.appendChild(bauPoly);
+  const bauLbl = document.createElementNS(ns,'text');
+  bauLbl.setAttribute('x', xOf(n-1)+8); bauLbl.setAttribute('y', yOf(bauVals[n-1])+3);
+  bauLbl.setAttribute('font-size', fs-1); bauLbl.setAttribute('font-weight','700');
+  bauLbl.setAttribute('fill', bauColor);
+  bauLbl.textContent = 'BAU: '+(bauVals[n-1]/1e6).toFixed(2)+'M';
+  svg.appendChild(bauLbl);
 
   return container;
 }
