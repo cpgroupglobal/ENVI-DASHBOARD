@@ -28,6 +28,7 @@
   --good:           #006300;
   --critical:       #d03b3b;
   --target-line:    #B87A10;
+  --bau-line:       #8a8a86;
 
   /* Shared CP Group green ramp (same palette as the GHG/Energy and Water dashboards) —
      darkest to lightest, validated as an ordinal ramp (monotone lightness, adjacent
@@ -54,6 +55,7 @@
   --good:           #0ca30c;
   --critical:       #e66767;
   --target-line:    #e0a020;
+  --bau-line:       #9a9a94;
 
   --shade0:     #0E7048;
   --shade1:     #2C8B57;
@@ -77,6 +79,7 @@
     --good:           #0ca30c;
     --critical:       #e66767;
     --target-line:    #e0a020;
+    --bau-line:       #9a9a94;
 
     --shade0:     #0E7048;
   --shade1:     #2C8B57;
@@ -716,7 +719,7 @@ function intensitySeries(key){
 // plain one for /v4/ that keeps every data fix but none of the entrance animation or the
 // collapsible headings -- so there is a fallback to point executives at if they dislike the
 // new behaviour, without having to rebuild anything by hand.
-const AX_ENABLED = false;
+const AX_ENABLED = true;
 const AX_MOTION = AX_ENABLED && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 // Set while the theme toggle redraws every chart: that is a repaint of content the viewer
 // is already looking at, not an entrance, so it should not re-run the animations.
@@ -1655,10 +1658,16 @@ function initOverviewDetail(){
   return render;
 }
 
-// Actual bars (2020-2025) + linear reduction Target line/dots (2020-2030, →0) + a dashed
+// Actual bars (2020-2025) + linear reduction Target line/dots (2020-2030, →0) + a rising
 // BAU (business-as-usual / no-action) reference line, matching the CP Group target-tracking
-// chart format. Source: workbook's own "Landfill Target" sheet (linear Base Year -> 2030=0);
-// BAU is a reference value supplied separately (not present in the raw data).
+// chart format. Source: workbook's own "Landfill Target" sheet (linear Base Year -> 2030=0).
+// BAU itself is only supplied as a single 2030 figure (target.bau) — same situation GHG was
+// in before Witthaya supplied a full yearly BAU table. Per Witthaya's explicit request (Aug
+// 2026, after asking "ทำไม bau เท่ากันทุกปี" about the old flat line), the line between the
+// base year and that 2030 figure is now a CONSTANT-CAGR CURVE rather than a flat line —
+// mocked up and confirmed before landing here. This is Claude's own estimate, not a
+// year-by-year figure Witthaya supplied, so it's labelled "est. X%/yr" in the legend rather
+// than presented as reported data.
 function buildLandfillTargetChart(actualYears, actualVals, target, color){
   const ns = 'http://www.w3.org/2000/svg';
   const years = target.years; // 2020..2030
@@ -1667,6 +1676,11 @@ function buildLandfillTargetChart(actualYears, actualVals, target, color){
   container.className = 'mix-side';
   container.style.margin = '0 0 4px 0';
 
+  // Constant year-over-year growth rate that carries base_value (base_year) to bau (last
+  // year, 2030) — e.g. Industrial: 50,451.97 -> 57,238 over 10 years = +1.27%/yr.
+  const bauCagr = Math.pow(target.bau / target.base_value, 1/(years[n-1]-target.base_year)) - 1;
+  const bauSeries = years.map(y => target.base_value * Math.pow(1+bauCagr, y-target.base_year));
+
   const W=460, H=270, padT=30, padB=24, padL=6, padR=6;
   const plotW = W-padL-padR, plotH = H-padT-padB;
   const svg = document.createElementNS(ns,'svg');
@@ -1674,28 +1688,15 @@ function buildLandfillTargetChart(actualYears, actualVals, target, color){
   svg.style.width='100%'; svg.style.height='270px'; svg.style.display='block'; svg.style.overflow='visible';
   container.appendChild(svg);
 
-  const maxVal = Math.max(target.bau, ...actualVals.filter(v=>v!=null), ...target.path) * 1.08;
+  const maxVal = Math.max(...bauSeries, ...actualVals.filter(v=>v!=null), ...target.path) * 1.08;
   const gap = 6;
   const barW = (plotW - gap*(n-1))/n;
   const fs = 9.5;
   const secondary = resolveColor('--text-secondary');
   const textPrimary = resolveColor('--text-primary');
+  const bauColor = resolveColor('--bau-line') || secondary;
   const yOf = v => padT + plotH - (v/maxVal*plotH);
   const xOf = i => padL + i*(barW+gap) + barW/2;
-
-  // BAU dashed reference line
-  const bauY = yOf(target.bau);
-  const bauLine = document.createElementNS(ns,'line');
-  bauLine.setAttribute('x1',padL); bauLine.setAttribute('x2',padL+plotW);
-  bauLine.setAttribute('y1',bauY); bauLine.setAttribute('y2',bauY);
-  bauLine.setAttribute('stroke',secondary); bauLine.setAttribute('stroke-width','1');
-  bauLine.setAttribute('stroke-dasharray','3,3');
-  svg.appendChild(bauLine);
-  const bauLabel = document.createElementNS(ns,'text');
-  bauLabel.setAttribute('x', padL+2); bauLabel.setAttribute('y', bauY-4);
-  bauLabel.setAttribute('font-size', fs); bauLabel.setAttribute('fill', secondary); bauLabel.setAttribute('font-weight','700');
-  bauLabel.textContent = 'BAU: '+fmtShort(target.bau,'',0);
-  svg.appendChild(bauLabel);
 
   // actual bars
   years.forEach((y,i)=>{
@@ -1715,11 +1716,13 @@ function buildLandfillTargetChart(actualYears, actualVals, target, color){
         t.setAttribute('x', x+barW/2); t.setAttribute('y', barY-4);
         t.setAttribute('text-anchor','middle'); t.setAttribute('font-size',fs-0.5); t.setAttribute('font-weight','700');
         t.setAttribute('fill', textPrimary);
-        t.textContent = fmtShort(av,'',1).trim();
+        t.textContent = fmtShort(av,'',2).trim();
         svg.appendChild(t);
       }
     } else {
-      // forecast years with no actual yet: faint outline placeholder box at the target height
+      // forecast years with no actual yet: faint outline placeholder box at the target height,
+      // labelled with that year's target figure (added per Witthaya's request to match the
+      // GHG chart, which shows a target number over every forecast year, not just the last one)
       const h = target.path[i]/maxVal*plotH;
       const barY = padT+plotH-h;
       const rect = document.createElementNS(ns,'rect');
@@ -1727,6 +1730,12 @@ function buildLandfillTargetChart(actualYears, actualVals, target, color){
       rect.setAttribute('width',barW.toFixed(1)); rect.setAttribute('height',Math.max(h,0).toFixed(1));
       rect.setAttribute('fill','none'); rect.setAttribute('stroke',secondary); rect.setAttribute('stroke-dasharray','2,2'); rect.setAttribute('stroke-width','1');
       svg.appendChild(rect);
+      const tl = document.createElementNS(ns,'text');
+      tl.setAttribute('x', x+barW/2); tl.setAttribute('y', barY-4);
+      tl.setAttribute('text-anchor','middle'); tl.setAttribute('font-size',fs-0.5); tl.setAttribute('font-weight','700');
+      tl.setAttribute('fill', textPrimary);
+      tl.textContent = fmtShort(target.path[i],'',2).trim();
+      svg.appendChild(tl);
     }
     const yl = document.createElementNS(ns,'text');
     yl.setAttribute('x', x+barW/2); yl.setAttribute('y', H-6);
@@ -1750,12 +1759,27 @@ function buildLandfillTargetChart(actualYears, actualVals, target, color){
     svg.appendChild(c);
   });
 
+  // BAU (no action) reference line — constant-CAGR curve from base_value to the supplied
+  // 2030 bau figure (see the function comment above for why this is estimated, not reported).
+  const bauPts = years.map((y,i)=> xOf(i)+','+yOf(bauSeries[i]).toFixed(1));
+  const bauPoly = document.createElementNS(ns,'polyline');
+  bauPoly.setAttribute('points', bauPts.join(' '));
+  bauPoly.setAttribute('fill','none'); bauPoly.setAttribute('stroke', bauColor);
+  bauPoly.setAttribute('stroke-width','1.4'); bauPoly.setAttribute('stroke-dasharray','5,3');
+  svg.appendChild(bauPoly);
+  const bauLbl = document.createElementNS(ns,'text');
+  bauLbl.setAttribute('x', xOf(n-1)+4); bauLbl.setAttribute('y', yOf(bauSeries[n-1])-4);
+  bauLbl.setAttribute('text-anchor','end'); bauLbl.setAttribute('font-size', fs-1); bauLbl.setAttribute('font-weight','700');
+  bauLbl.setAttribute('fill', bauColor);
+  bauLbl.textContent = 'BAU: '+fmtShort(bauSeries[n-1],'',2);
+  svg.appendChild(bauLbl);
+
   const legend = document.createElement('div');
   legend.style.cssText = 'display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--text-secondary);margin-top:2px;';
   legend.innerHTML =
     '<span><span style="display:inline-block;width:9px;height:9px;background:'+color+';border-radius:2px;margin-right:4px;"></span>Actual</span>'+
     '<span><span style="display:inline-block;width:9px;height:2px;background:'+(resolveColor('--target-line')||'#e0a020')+';margin-right:4px;vertical-align:middle;"></span>Target (linear to 0 by 2030)</span>'+
-    '<span><span style="display:inline-block;width:9px;height:2px;border-top:1px dashed var(--text-secondary);margin-right:4px;vertical-align:middle;"></span>BAU</span>';
+    '<span><span style="display:inline-block;width:14px;height:2px;background:'+bauColor+';margin-right:4px;vertical-align:middle;"></span>BAU (est. '+(bauCagr*100).toFixed(2)+'%/yr)</span>';
   container.appendChild(legend);
 
   return container;
@@ -1836,7 +1860,7 @@ function initZeroLandfill(){
           gapText+'</div>';
       }
     }
-    kpi.innerHTML = '<div style="font-size:11.5px;color:var(--text-muted);">'+targetLine+'</div>'+
+    kpi.innerHTML = '<div style="font-size:11.5px;font-weight:600;color:var(--text-secondary);">'+targetLine+'</div>'+
       '<div style="font-size:26px;font-weight:800;color:var(--text-primary);">'+fmtShort(val,U)+'</div>'+yoyHtml+gapHtml;
     body.appendChild(kpi);
 

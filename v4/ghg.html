@@ -770,7 +770,7 @@ function prev(arr){ return arr[arr.length-2]; }
 // plain one for /v4/ that keeps every data fix but none of the entrance animation or the
 // collapsible headings -- so there is a fallback to point executives at if they dislike the
 // new behaviour, without having to rebuild anything by hand.
-const AX_ENABLED = false;
+const AX_ENABLED = true;
 const AX_MOTION = AX_ENABLED && !(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 // Set while the theme toggle redraws every chart: that is a repaint of content the viewer
 // is already looking at, not an entrance, so it should not re-run the animations.
