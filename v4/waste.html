@@ -126,8 +126,15 @@ header .sub{ font-size: 12px; color: var(--text-muted); font-weight:400; margin-
 .home-btn:active{ transform:scale(.96); }
 header .head-left{ display:flex; align-items:center; min-width:0; }
 
-.tabs{
+/* Tabs + (when viewing a single BU) the BU identity/year strip live in one shared
+   sticky shell right below the header, so they stack with zero gap between them —
+   two independently-stickied elements left a hairline gap that scrolled content could
+   peek through (see .bu-frozen below). */
+.sticky-shell{
   position: sticky; top: 56px; z-index: 19;
+  background: var(--page-plane);
+}
+.tabs{
   display:flex; gap:6px; padding: 6px; margin: 0 16px 12px;
   background: var(--surface-1); border:1px solid var(--border); border-radius: 12px;
 }
@@ -139,6 +146,19 @@ header .head-left{ display:flex; align-items:center; min-width:0; }
 .tab-btn[aria-selected="true"]{
   background: var(--accent); color: #fff;
 }
+
+/* Frozen BU identity strip: shown only while a single BU's detail view is open, so
+   an exec scrolling through its charts never loses track of which BU/year they're on
+   (requested after "freeze" feedback on the BU detail view). Lives inside .sticky-shell,
+   right under the tab bar, and hides again on the BU picker grid or other tabs. */
+.bu-frozen{
+  display:none;
+  margin: 0 16px 14px; padding: 14px;
+  background: var(--surface-1); border:1px solid var(--border); border-radius: 14px;
+}
+.bu-frozen.show{ display:block; }
+.bu-frozen .bu-detail-head{ margin-bottom: 10px; }
+.bu-frozen #buYearSeg{ margin-bottom: 0; }
 
 main{ padding: 0 16px; }
 .tabpanel{ display:none; }
@@ -495,10 +515,24 @@ footer{ padding: 10px 16px 4px; font-size:11px; color: var(--text-muted); line-h
     <button class="theme-btn" id="themeBtn" aria-label="Toggle light/dark theme">&#9789;</button>
   </header>
 
+  <div class="sticky-shell">
   <nav class="tabs" role="tablist">
     <button class="tab-btn" role="tab" aria-selected="true" data-tab="overview">Summary</button>
     <button class="tab-btn" role="tab" aria-selected="false" data-tab="bu">Business Units</button>
   </nav>
+  <!-- Populated/shown only while a single BU's detail view is open (see buildBUProfile) -->
+  <div class="bu-frozen" id="buFrozenBar">
+    <div class="bu-detail-head">
+      <button class="bu-back-btn" id="buBackBtn" type="button" aria-label="Back to Business Unit list">&#8592;</button>
+      <span class="bu-detail-logo" id="buDetailLogo"></span>
+      <div style="flex:1;min-width:0;">
+        <h2 id="buDetailName"></h2>
+        <p class="bu-detail-note" id="buDetailNote" style="display:none;"></p>
+      </div>
+    </div>
+    <div class="year-scroll" id="buYearSeg"></div>
+  </div>
+  </div>
 
   <main>
     <section class="tabpanel active" id="panel-overview">
@@ -526,16 +560,9 @@ footer{ padding: 10px 16px 4px; font-size:11px; color: var(--text-muted); line-h
         <div class="bu-grid" id="buGrid"></div>
       </div>
       <div id="buDetailCard" style="display:none;">
+        <!-- Back button / logo / name / year selector now live in #buFrozenBar (in the
+             sticky shell up top) so they stay visible while this scrolls. -->
         <div class="card">
-          <div class="bu-detail-head">
-            <button class="bu-back-btn" id="buBackBtn" type="button" aria-label="Back to Business Unit list">&#8592;</button>
-            <span class="bu-detail-logo" id="buDetailLogo"></span>
-            <div style="flex:1;min-width:0;">
-              <h2 id="buDetailName"></h2>
-              <p class="bu-detail-note" id="buDetailNote" style="display:none;"></p>
-            </div>
-          </div>
-          <div class="year-scroll" id="buYearSeg"></div>
           <div class="bu-summary" id="buSummary"></div>
         </div>
         <div class="card">
@@ -1931,6 +1958,7 @@ function initZeroLandfill(){
 function buildBUProfile(dict, detailDict, expandableKeys){
   const pickerCard = document.getElementById('buPickerCard');
   const detailCard = document.getElementById('buDetailCard');
+  const frozenBar = document.getElementById('buFrozenBar');
   const grid = document.getElementById('buGrid');
   const backBtn = document.getElementById('buBackBtn');
   const detailLogo = document.getElementById('buDetailLogo');
@@ -1964,6 +1992,7 @@ function buildBUProfile(dict, detailDict, expandableKeys){
     else { detailNote.style.display = 'none'; }
     pickerCard.style.display = 'none';
     detailCard.style.display = '';
+    if(frozenBar) frozenBar.classList.add('show');
     render();
   }
 
@@ -1993,6 +2022,7 @@ function buildBUProfile(dict, detailDict, expandableKeys){
   backBtn.addEventListener('click', ()=>{
     detailCard.style.display = 'none';
     pickerCard.style.display = '';
+    if(frozenBar) frozenBar.classList.remove('show');
   });
 
   DATA.years.forEach(y=>{
@@ -2166,6 +2196,15 @@ function initTabs(){
       document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
       const panel = document.getElementById('panel-'+btn.dataset.tab);
       panel.classList.add('active');
+      // The frozen BU identity strip only makes sense while looking at a single BU's
+      // detail view on the Business Units tab — hide it everywhere else (Summary, or
+      // the BU picker grid itself).
+      const frozenBar = document.getElementById('buFrozenBar');
+      if(frozenBar){
+        const buDetailOpen = btn.dataset.tab === 'bu' &&
+          document.getElementById('buDetailCard').style.display !== 'none';
+        frozenBar.classList.toggle('show', buDetailOpen);
+      }
       // Cards built while this panel was hidden still need wiring the first time it opens.
       axCollapsible(panel);
       // The panel was display:none until a moment ago, so its charts had no measurable
