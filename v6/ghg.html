@@ -2841,16 +2841,28 @@ window.addEventListener('resize', ()=>{
   st.textContent='header{display:none!important;}.app{padding-top:6px!important;}';
   document.head.appendChild(st);
   function restructure(){
+    // GHG page has TWO BU-compare charts: "GHG Emissions by Business Unit" and
+    // "Energy Consumption by Business Unit". Per request, keep+pin the GHG Emissions
+    // one (it carries the scan highlight + arrow into Business Units) and drop only
+    // the Energy Consumption one.
+    var cards=document.querySelectorAll('.bu-compare-card');
+    var pinCard=null;
+    cards.forEach(function(c){
+      if(/Energy Consumption by Business Unit/.test(c.textContent)){
+        c.style.display='none';
+      } else if(!pinCard){
+        pinCard=c;
+      }
+    });
     var shell=document.querySelector('.sticky-shell');
-    var card=document.querySelector('.bu-compare-card');
-    if(shell&&card) shell.parentNode.insertBefore(card, shell);
+    if(shell&&pinCard) shell.parentNode.insertBefore(pinCard, shell);
     var ov=document.querySelector('.tab-btn[data-tab="overview"]');
     if(ov) ov.textContent='CP Group';
     // re-center the highlighted BU horizontally (moving the card resets its scroll)
     setTimeout(function(){
-      if(!card) return;
-      var sc=card.querySelector('.bu-compare-scroll');
-      var hl=card.querySelector('.bu-compare-col.is-highlighted');
+      if(!pinCard) return;
+      var sc=pinCard.querySelector('.bu-compare-scroll');
+      var hl=pinCard.querySelector('.bu-compare-col.is-highlighted');
       if(sc&&hl){ var r1=hl.getBoundingClientRect(), r0=sc.getBoundingClientRect();
         sc.scrollLeft += (r1.left-r0.left) - (sc.clientWidth - r1.width)/2; }
     },80);
