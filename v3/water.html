@@ -123,8 +123,15 @@ header .sub{ font-size: 12px; color: var(--text-muted); font-weight:400; margin-
 .home-btn:active{ transform:scale(.96); }
 header .head-left{ display:flex; align-items:center; min-width:0; }
 
-.tabs{
+/* Tabs + (when viewing a single BU) the BU identity/year strip live in one shared
+   sticky shell right below the header, so they stack with zero gap between them —
+   two independently-stickied elements left a hairline gap that scrolled content could
+   peek through (see .bu-frozen below). */
+.sticky-shell{
   position: sticky; top: 56px; z-index: 19;
+  background: var(--page-plane);
+}
+.tabs{
   display:flex; gap:6px; padding: 6px; margin: 0 16px 12px;
   background: var(--surface-1); border:1px solid var(--border); border-radius: 12px;
 }
@@ -136,6 +143,19 @@ header .head-left{ display:flex; align-items:center; min-width:0; }
 .tab-btn[aria-selected="true"]{
   background: var(--accent); color: #fff;
 }
+
+/* Frozen BU identity strip: shown only while a single BU's detail view is open, so
+   an exec scrolling through its charts never loses track of which BU/year they're on
+   (requested after "freeze" feedback on the BU detail view). Lives inside .sticky-shell,
+   right under the tab bar, and hides again on the BU picker grid or other tabs. */
+.bu-frozen{
+  display:none;
+  margin: 0 16px 14px; padding: 14px;
+  background: var(--surface-1); border:1px solid var(--border); border-radius: 14px;
+}
+.bu-frozen.show{ display:block; }
+.bu-frozen .bu-detail-head{ margin-bottom: 10px; }
+.bu-frozen #buYearSeg{ margin-bottom: 0; }
 
 main{ padding: 0 16px; }
 .tabpanel{ display:none; }
@@ -492,10 +512,24 @@ footer{ padding: 10px 16px 4px; font-size:11px; color: var(--text-muted); line-h
     <button class="theme-btn" id="themeBtn" aria-label="Toggle light/dark theme">&#9789;</button>
   </header>
 
+  <div class="sticky-shell">
   <nav class="tabs" role="tablist">
     <button class="tab-btn" role="tab" aria-selected="true" data-tab="overview">Summary</button>
     <button class="tab-btn" role="tab" aria-selected="false" data-tab="bu">Business Units</button>
   </nav>
+  <!-- Populated/shown only while a single BU's detail view is open (see buildBUProfile) -->
+  <div class="bu-frozen" id="buFrozenBar">
+    <div class="bu-detail-head">
+      <button class="bu-back-btn" id="buBackBtn" type="button" aria-label="Back to Business Unit list">&#8592;</button>
+      <span class="bu-detail-logo" id="buDetailLogo"></span>
+      <div style="flex:1;min-width:0;">
+        <h2 id="buDetailName"></h2>
+        <p class="bu-detail-note" id="buDetailNote" style="display:none;"></p>
+      </div>
+    </div>
+    <div class="year-scroll" id="buYearSeg"></div>
+  </div>
+  </div>
 
   <main>
     <section class="tabpanel active" id="panel-overview">
@@ -516,16 +550,9 @@ footer{ padding: 10px 16px 4px; font-size:11px; color: var(--text-muted); line-h
         <div class="bu-grid" id="buGrid"></div>
       </div>
       <div id="buDetailCard" style="display:none;">
+        <!-- Back button / logo / name / year selector now live in #buFrozenBar (in the
+             sticky shell up top) so they stay visible while this scrolls. -->
         <div class="card">
-          <div class="bu-detail-head">
-            <button class="bu-back-btn" id="buBackBtn" type="button" aria-label="Back to Business Unit list">&#8592;</button>
-            <span class="bu-detail-logo" id="buDetailLogo"></span>
-            <div style="flex:1;min-width:0;">
-              <h2 id="buDetailName"></h2>
-              <p class="bu-detail-note" id="buDetailNote" style="display:none;"></p>
-            </div>
-          </div>
-          <div class="year-scroll" id="buYearSeg"></div>
           <div class="bu-summary" id="buSummary"></div>
         </div>
         <div class="card">
@@ -1684,6 +1711,7 @@ function initOverviewDetail(){
 function buildBUProfile(dict, detailDict, expandableKeys){
   const pickerCard = document.getElementById('buPickerCard');
   const detailCard = document.getElementById('buDetailCard');
+  const frozenBar = document.getElementById('buFrozenBar');
   const grid = document.getElementById('buGrid');
   const backBtn = document.getElementById('buBackBtn');
   const detailLogo = document.getElementById('buDetailLogo');
@@ -1717,6 +1745,7 @@ function buildBUProfile(dict, detailDict, expandableKeys){
     else { detailNote.style.display = 'none'; }
     pickerCard.style.display = 'none';
     detailCard.style.display = '';
+    if(frozenBar) frozenBar.classList.add('show');
     render();
   }
 
@@ -1746,6 +1775,7 @@ function buildBUProfile(dict, detailDict, expandableKeys){
   backBtn.addEventListener('click', ()=>{
     detailCard.style.display = 'none';
     pickerCard.style.display = '';
+    if(frozenBar) frozenBar.classList.remove('show');
   });
 
   DATA.years.forEach(y=>{
@@ -1808,7 +1838,12 @@ function buildBUProfile(dict, detailDict, expandableKeys){
 
   // The detail card starts hidden (picker shows first) — only (re)draw once a BU has
   // actually been opened, so a theme toggle before that doesn't touch an empty view.
-  return function(){ if(detailCard.style.display !== 'none') render(); };
+  const redraw = function(){ if(detailCard.style.display !== 'none') render(); };
+  // Exposed so a page-load URL param (?bu=...) can jump straight to a BU's detail view
+  // without duplicating the open logic above — see the URL-param handling in Init.
+  redraw.openDetail = openDetail;
+  redraw.buKeys = names.filter(n=>!BU_HIDDEN.has(n));
+  return redraw;
 }
 
 function buildBreakdown(prefix, dict, detailDict){
@@ -1919,6 +1954,15 @@ function initTabs(){
       document.querySelectorAll('.tabpanel').forEach(p=>p.classList.remove('active'));
       const panel = document.getElementById('panel-'+btn.dataset.tab);
       panel.classList.add('active');
+      // The frozen BU identity strip only makes sense while looking at a single BU's
+      // detail view on the Business Units tab — hide it everywhere else (Summary, or
+      // the BU picker grid itself).
+      const frozenBar = document.getElementById('buFrozenBar');
+      if(frozenBar){
+        const buDetailOpen = btn.dataset.tab === 'bu' &&
+          document.getElementById('buDetailCard').style.display !== 'none';
+        frozenBar.classList.toggle('show', buDetailOpen);
+      }
       // Cards built while this panel was hidden still need wiring the first time it opens.
       axCollapsible(panel);
       // The panel was display:none until a moment ago, so its charts had no measurable
@@ -1976,9 +2020,37 @@ initTheme([renderOverviewDetail, renderBU]);
 // Business Units panel that is still display:none at this point).
 axCollapsible();
 
+// ---------- URL param: jump straight to a Business Unit on load (?bu=makro) ----------
+// Lets a link/QR code point an executive directly at "their" BU instead of landing on
+// the Summary tab and making them find it in the picker grid. Matching is deliberately
+// forgiving (case-insensitive, punctuation-insensitive) since a URL author may not know
+// the exact internal BU code (e.g. "AGRO CPG:BANGLADESH" vs a param like "agro-cpg-bangladesh").
+let urlBUMatched = false;
+(function(){
+  const want = (new URLSearchParams(window.location.search).get('bu') || '').trim();
+  if(!want) return;
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+  const wantLower = want.toLowerCase();
+  const wantNorm = norm(want);
+  const keys = renderBU.buKeys || [];
+  const match = keys.find(k => k.toLowerCase() === wantLower)
+    || keys.find(k => tname(k).toLowerCase() === wantLower)
+    || keys.find(k => norm(k) === wantNorm)
+    || keys.find(k => norm(tname(k)) === wantNorm);
+  if(!match) return;
+  const buTabBtn = document.querySelector('.tab-btn[data-tab="bu"]');
+  if(buTabBtn) buTabBtn.click();
+  renderBU.openDetail(match);
+  urlBUMatched = true;
+})();
+
 // First paint: animate the Summary tab in. rAF so every chart has been laid out and has a
 // real height before axReveal decides which SVGs are charts and which are inline icons.
-requestAnimationFrame(()=> axReveal(document.getElementById('panel-overview')));
+// Skipped when a ?bu= param above already jumped straight to a BU's detail view instead —
+// that tab switch ran its own reveal for the Business Units panel.
+if(!urlBUMatched){
+  requestAnimationFrame(()=> axReveal(document.getElementById('panel-overview')));
+}
 
 // A resize redraws the charts from scratch; that is a re-layout of what the viewer already
 // has on screen, so it must not replay the entrance animations (rotating a phone would
