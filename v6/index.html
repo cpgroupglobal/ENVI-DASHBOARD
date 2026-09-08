@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CP Group — Environmental Performance</title>
+<link rel="icon" href="icon.png">
+<style>
+  :root{
+    --bg:#f4f4f2; --chrome:#fcfcfb; --line:#e6e5df; --text:#0b0b0b; --muted:#72706a;
+    --seg-bg:#ececeb;
+    --ghg:#2C8B57; --water:#2B6CB0; --waste:#B87A10;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --bg:#0d0d0d; --chrome:#161615; --line:#2c2c2a; --text:#ffffff; --muted:#a3a19b;
+      --seg-bg:#242423; --ghg:#4FCB8C; --water:#5AA2E0; --waste:#E0A020;
+    }
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);}
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Loma",Arial,sans-serif;color:var(--text);}
+  .v6-top{
+    position:sticky; top:0; z-index:50; background:var(--chrome);
+    border-bottom:1px solid var(--line);
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom,0)) 12px;
+    padding-top:calc(10px + env(safe-area-inset-top,0));
+  }
+  .v6-title{ font-size:13px; font-weight:800; letter-spacing:.01em; margin:0 2px 8px; display:flex; align-items:center; gap:8px; }
+  .v6-title .dotgrp{ display:inline-flex; gap:3px; }
+  .v6-title .dotgrp i{ width:7px;height:7px;border-radius:50%; display:inline-block; }
+  .v6-sub{ font-weight:500; color:var(--muted); font-size:11px; }
+  .v6-seg{ display:flex; gap:4px; background:var(--seg-bg); border-radius:12px; padding:4px; }
+  .v6-seg button{
+    flex:1; border:none; background:transparent; color:var(--muted);
+    font-family:inherit; font-weight:700; font-size:13px; padding:11px 6px; border-radius:9px;
+    cursor:pointer; line-height:1.15; transition:background .12s,color .12s;
+  }
+  .v6-seg button .en{ display:block; }
+  .v6-seg button[data-on="1"]{ color:#fff; }
+  .v6-seg button[data-area="ghg"][data-on="1"]{ background:var(--ghg); }
+  .v6-seg button[data-area="water"][data-on="1"]{ background:var(--water); }
+  .v6-seg button[data-area="waste"][data-on="1"]{ background:var(--waste); }
+  .v6-frames{ position:relative; }
+  .v6-pane{ display:none; }
+  .v6-pane[data-on="1"]{ display:block; }
+  .v6-pane iframe{ width:100%; border:0; display:block; background:var(--bg); }
+  .v6-loading{ padding:40px 20px; text-align:center; color:var(--muted); font-size:13px; }
+</style>
+</head>
+<body>
+  <div class="v6-top">
+    <div class="v6-title">
+      <span class="dotgrp"><i style="background:var(--ghg)"></i><i style="background:var(--water)"></i><i style="background:var(--waste)"></i></span>
+      CP Group — Environmental Performance
+      <span class="v6-sub" id="v6sub"></span>
+    </div>
+    <div class="v6-seg" id="v6seg">
+      <button data-area="ghg"   data-on="1">GHG &amp; Energy</button>
+      <button data-area="water" data-on="0">Water</button>
+      <button data-area="waste" data-on="0">Waste</button>
+    </div>
+  </div>
+  <div class="v6-frames" id="v6frames"></div>
+
+<script>
+(function(){
+  var AREAS = {
+    ghg:   { file:'ghg.html'   },
+    water: { file:'water.html' },
+    waste: { file:'waste.html' }
+  };
+  var params = new URLSearchParams(location.search);
+  var bu = (params.get('bu')||'').trim();
+  var startArea = (params.get('area')||'ghg').toLowerCase();
+  if(!AREAS[startArea]) startArea = 'ghg';
+
+  var framesEl = document.getElementById('v6frames');
+  var segEl = document.getElementById('v6seg');
+  var subEl = document.getElementById('v6sub');
+  if(bu) subEl.textContent = '· สแกน: ' + bu.toUpperCase();
+
+  var panes = {};   // area -> {pane, iframe, height}
+  var heightByFile = {};
+
+  function srcFor(area){
+    var s = AREAS[area].file + '?embed=1';
+    if(bu) s += '&bu=' + encodeURIComponent(bu);
+    return s;
+  }
+
+  function ensurePane(area){
+    if(panes[area]) return panes[area];
+    var pane = document.createElement('div');
+    pane.className = 'v6-pane';
+    pane.setAttribute('data-area', area);
+    var loading = document.createElement('div');
+    loading.className = 'v6-loading';
+    loading.textContent = 'กำลังโหลด…';
+    pane.appendChild(loading);
+    var iframe = document.createElement('iframe');
+    iframe.setAttribute('scrolling','no');
+    iframe.style.height = '600px';
+    iframe.addEventListener('load', function(){ if(loading.parentNode) loading.remove(); });
+    iframe.src = srcFor(area);
+    pane.appendChild(iframe);
+    framesEl.appendChild(pane);
+    panes[area] = { pane: pane, iframe: iframe };
+    return panes[area];
+  }
+
+  function show(area){
+    Object.keys(panes).forEach(function(a){
+      if(panes[a]) panes[a].pane.setAttribute('data-on', a===area ? '1':'0');
+    });
+    var p = ensurePane(area);
+    p.pane.setAttribute('data-on','1');
+    // re-apply last known height for an already-loaded frame
+    var h = heightByFile[AREAS[area].file];
+    if(h) p.iframe.style.height = h + 'px';
+    // segmented state
+    Array.prototype.forEach.call(segEl.children, function(btn){
+      btn.setAttribute('data-on', btn.getAttribute('data-area')===area ? '1':'0');
+    });
+    // reflect area in URL (no reload) so refresh/back keeps the area
+    try{
+      var u = new URL(location.href); u.searchParams.set('area', area);
+      history.replaceState(null,'',u);
+    }catch(e){}
+    window.scrollTo({top:0, behavior:'auto'});
+  }
+
+  segEl.addEventListener('click', function(e){
+    var btn = e.target.closest('button[data-area]');
+    if(btn) show(btn.getAttribute('data-area'));
+  });
+
+  window.addEventListener('message', function(ev){
+    var d = ev.data;
+    if(!d || typeof d.v6h !== 'number') return;
+    var file = d.v6frame || '';
+    if(file) heightByFile[file] = d.v6h;
+    // set height on whichever iframe matches this file
+    Object.keys(panes).forEach(function(a){
+      if(panes[a] && AREAS[a].file === file){
+        panes[a].iframe.style.height = d.v6h + 'px';
+      }
+    });
+  });
+
+  // initial
+  show(startArea);
+})();
+</script>
+</body>
+</html>

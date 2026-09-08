@@ -1,0 +1,15 @@
+{
+  "name": "CP Group Environmental Performance",
+  "short_name": "CP ENVI",
+  "description": "CP Group Sustainability Development — Environmental Performance 2020-2025 (GHG/Energy, Water, Waste)",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#05070a",
+  "theme_color": "#0b1a14",
+  "icons": [
+    { "src": "icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "icon.png", "sizes": "180x180", "type": "image/png", "purpose": "maskable" }
+  ]
+}
