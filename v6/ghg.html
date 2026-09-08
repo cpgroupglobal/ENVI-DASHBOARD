@@ -581,7 +581,7 @@ footer{ padding: 10px 16px 4px; font-size:11px; color: var(--text-muted); line-h
 .ax-toggle:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
 .ax-caret{
   margin-left:auto; flex:none;
-  font-size:11px; line-height:1;
+  font-size:14px; line-height:1;
   color:var(--text-muted);
   transition: transform .28s cubic-bezier(.4,0,.2,1);
 }
@@ -2860,7 +2860,21 @@ window.addEventListener('resize', ()=>{
       });
     },80);
   }
+  // On scan-in, keep the "Energy Consumption by Business Unit" chart collapsed
+  // (GHG Emissions stays open) so the landing view isn't two tall charts at once.
+  // Run after the collapse wiring so it wins over the bu-compare default (open).
+  function collapseEnergy(){
+    document.querySelectorAll('.bu-compare-card').forEach(function(c){
+      if(/Energy Consumption by Business Unit/.test(c.textContent)){
+        c.classList.add('ax-collapsed');
+        var tg=c.querySelector('.ax-toggle');
+        if(tg) tg.setAttribute('aria-expanded','false');
+      }
+    });
+  }
   setTimeout(restructure,0);
+  setTimeout(collapseEnergy,140);
+  setTimeout(collapseEnergy,600);
   function postH(){ try{ parent.postMessage({v6h:Math.ceil(document.documentElement.getBoundingClientRect().height), v6frame:(location.pathname.split('/').pop()||'')}, '*'); }catch(e){} }
   window.addEventListener('load', function(){ setTimeout(postH,150); setTimeout(postH,500); setTimeout(postH,1200); });
   try{ new ResizeObserver(function(){ postH(); }).observe(document.body); }catch(e){}
