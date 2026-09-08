@@ -35,6 +35,10 @@
      --baseline/--gridline so the highlighted latest-year bar (--accent) is the only warm
      color in the chart. */
   --bu-compare-grey: #d8d7d1;
+  /* BU comparison chart bar labels: color encodes the label's own unit scale
+     (M vs K/plain), fixed per theme -- see the CSS comment on .bu-compare-bar-lbl. */
+  --bu-unit-strong: #1f6b41;
+  --bu-unit-soft:   #7EAE93;
 
   /* Environmental green ramp — darkest to lightest, validated as an ordinal ramp
      (monotone lightness, adjacent dL >= 0.06, light end clears 2:1 on this surface).
@@ -62,6 +66,8 @@
   --surface-alt:    #242423;
   --bau-line:       #9a9a94;
   --bu-compare-grey: #4b4b47;
+  --bu-unit-strong: #4FCB8C;
+  --bu-unit-soft:   #6E8F7E;
 
   --shade0:     #0E7048;
   --shade1:     #2C8B57;
@@ -87,6 +93,8 @@
     --surface-alt:    #242423;
     --bau-line:       #9a9a94;
     --bu-compare-grey: #4b4b47;
+    --bu-unit-strong: #4FCB8C;
+    --bu-unit-soft:   #6E8F7E;
 
     --shade0:     #0E7048;
   --shade1:     #2C8B57;
@@ -428,10 +436,19 @@ svg.donut{ width:150px; height:150px; display:block; }
 .bu-compare-bars{ display:flex; align-items:flex-end; gap:3px; }
 .bu-compare-bar-col{ display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
 .bu-compare-bar-lbl{
-  font-size:8px; font-weight:600; color:var(--text-muted); margin-bottom:3px;
+  font-size:8px; font-weight:600; margin-bottom:3px;
   white-space:nowrap; writing-mode:vertical-rl; transform:rotate(180deg);
 }
-.bu-compare-bar-lbl.is-latest{ font-weight:800; color:var(--accent); }
+/* Color now encodes the label's own unit scale (M vs K/plain) rather than
+   "which year" -- the bar's own color + is-latest's bold weight already show which
+   year is 2025, so this doesn't need to repeat that. --bu-unit-strong/--bu-unit-soft
+   are fixed per-theme hex values (see the three :root color blocks), NOT a
+   color-mix() formula -- an earlier color-mix(accent, page-plane) version looked fine
+   in light mode but mixed toward near-black in dark mode, making K-scale labels
+   nearly invisible. Fixed hex values sidestep that. */
+.bu-compare-bar-lbl.unit-m{ color: var(--bu-unit-strong); }
+.bu-compare-bar-lbl.unit-k, .bu-compare-bar-lbl.unit-plain{ color: var(--bu-unit-soft); }
+.bu-compare-bar-lbl.is-latest{ font-weight:800; }
 .bu-compare-bar{ width:9px; border-radius:2px 2px 0 0; background:var(--bu-compare-grey); }
 .bu-compare-bar.is-latest{ background:var(--accent); }
 .bu-compare-logo{
@@ -444,11 +461,18 @@ svg.donut{ width:150px; height:150px; display:block; }
 .bu-compare-diff{ font-size:9.5px; font-weight:800; margin-top:3px; }
 .bu-compare-diff.good{ color:var(--good); }
 .bu-compare-diff.bad{ color:var(--critical); }
+/* Small round arrow button (chosen over the earlier filled text pill "View detail ->",
+   which read as too heavy/plain for how little space it has). No text -- the arrow
+   plus its position right under the highlighted BU is self-explanatory in context.
+   aria-label carries the accessible name since there's no visible text. */
 .bu-compare-view-btn{
   margin-top:6px; border:none; background:var(--accent); color:#fff;
-  font-size:9.5px; font-weight:700; padding:4px 8px; border-radius:999px;
-  cursor:pointer; font-family:inherit; white-space:nowrap;
+  width:22px; height:22px; padding:0; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-family:inherit;
+  box-shadow: 0 2px 6px color-mix(in oklab, var(--accent) 45%, transparent);
 }
+.bu-compare-view-btn::after{ content:'\2192'; font-size:13px; line-height:1; color:#fff; }
 
 .metric-block{ margin-top:14px; padding:12px; border-radius:10px; background:var(--page-plane); border:1px solid var(--border); }
 .metric-block:first-child{ margin-top:0; }
@@ -1172,6 +1196,12 @@ function buildBUCompareChart(metricKey){
       // executive as "no data" rather than "small but real". Each label now carries
       // its own scale letter (e.g. "1.48M" next to "51.21" with no letter at all).
       lbl.textContent = fmtShort(v, '', 2).trim();
+      // Color-code the label by its own scale letter (unit-m/unit-k/unit-plain), so
+      // "1.48M" and "41.65K" read as visibly different weights of number at a glance,
+      // not just different suffix letters -- see the .bu-compare-bar-lbl CSS comment.
+      if(lbl.textContent.endsWith('M')) lbl.classList.add('unit-m');
+      else if(lbl.textContent.endsWith('K')) lbl.classList.add('unit-k');
+      else lbl.classList.add('unit-plain');
       const bar = document.createElement('div');
       bar.className = 'bu-compare-bar' + (isLatest ? ' is-latest' : '');
       bar.style.height = h.toFixed(1) + 'px';
@@ -1225,6 +1255,7 @@ function buildCompareCard(title, metricKey, unitLabel){
   legend.innerHTML =
     '<span><span class="bu-compare-swatch grey"></span>2021&ndash;2024</span>'+
     '<span><span class="bu-compare-swatch latest"></span>2025</span>'+
+    '<span>% diff. 2025/2024</span>'+
     '<span class="bu-compare-unit">Unit: '+unitLabel+'</span>';
   card.appendChild(legend);
   card.appendChild(buildBUCompareChart(metricKey));
@@ -1269,7 +1300,9 @@ function highlightBUCompare(names, onViewDetail){
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'bu-compare-view-btn';
-    btn.textContent = 'View detail →';
+    // No visible label (the round arrow button carries no text) -- aria-label keeps
+    // it accessible to screen readers with the same meaning "View detail" used to say.
+    btn.setAttribute('aria-label', 'View ' + tname(key) + ' detail');
     btn.addEventListener('click', function(){ onViewDetail(key); });
     col.appendChild(btn);
     // Scroll only the first highlighted column (in the topmost chart) into view.

@@ -29,6 +29,9 @@
   --critical:       #d03b3b;
   --target-line:    #B87A10;
   --bau-line:       #8a8a86;
+  --bu-compare-grey: #d8d7d1;
+  --bu-unit-strong: #1f6b41;
+  --bu-unit-soft:   #7EAE93;
 
   /* Shared CP Group green ramp (same palette as the GHG/Energy and Water dashboards) —
      darkest to lightest, validated as an ordinal ramp (monotone lightness, adjacent
@@ -56,6 +59,9 @@
   --critical:       #e66767;
   --target-line:    #e0a020;
   --bau-line:       #9a9a94;
+  --bu-compare-grey: #4b4b47;
+  --bu-unit-strong: #4FCB8C;
+  --bu-unit-soft:   #6E8F7E;
 
   --shade0:     #0E7048;
   --shade1:     #2C8B57;
@@ -80,6 +86,9 @@
     --critical:       #e66767;
     --target-line:    #e0a020;
     --bau-line:       #9a9a94;
+    --bu-compare-grey: #4b4b47;
+    --bu-unit-strong: #4FCB8C;
+    --bu-unit-soft:   #6E8F7E;
 
     --shade0:     #0E7048;
   --shade1:     #2C8B57;
@@ -361,6 +370,73 @@ svg.donut{ width:150px; height:150px; display:block; }
 .bu-summary-value .delta.good{ color:var(--good); }
 .bu-summary-value .delta.bad{ color:var(--critical); }
 .bu-summary-value .delta.neutral{ color:var(--text-muted); }
+
+/* BU comparison chart (Summary tab): every BU's own last-5-years bars side by side,
+   sorted by the latest year — the web equivalent of the exec-deck "Total Waste by BU"
+   slide. Horizontally scrollable since ~20 BU columns never fit one screen width.
+   Ported verbatim from the GHG/Energy dashboard's finalized version (bar alignment fix,
+   fmtShort adaptive M/K unit labels + colors, round-arrow view-detail button) — see that
+   dashboard's build script for the full history of why each choice was made. */
+.bu-compare-legend{ display:flex; gap:14px; align-items:center; font-size:11px; color:var(--text-muted); margin-bottom:10px; flex-wrap:wrap; }
+.bu-compare-swatch{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle; }
+.bu-compare-swatch.grey{ background:var(--bu-compare-grey); }
+.bu-compare-swatch.latest{ background:var(--accent); }
+.bu-compare-unit{ margin-left:auto; }
+.bu-compare-scroll{ overflow-x:auto; padding-bottom:6px; margin:0 -14px; padding-left:14px; padding-right:14px; }
+/* flex-start, not flex-end: the bars sit at the TOP of each column (bars, then logo,
+   then name, then diff badge below). flex-end would bottom-align each column's footer
+   instead -- since footer height varies with name length / whether a diff badge exists,
+   that pushes the bars themselves out of alignment across columns. flex-start keeps
+   every column's bar baseline level regardless of footer height. */
+.bu-compare-inner{ display:flex; gap:16px; align-items:flex-start; min-width:max-content; }
+.bu-compare-col{
+  display:flex; flex-direction:column; align-items:center; width:74px; flex:none;
+  padding:8px 4px 10px; border-radius:10px; border:1.5px solid transparent;
+}
+.bu-compare-col.is-highlighted{
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+}
+.bu-compare-bars{ display:flex; align-items:flex-end; gap:3px; }
+.bu-compare-bar-col{ display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+.bu-compare-bar-lbl{
+  font-size:8px; font-weight:600; margin-bottom:3px;
+  white-space:nowrap; writing-mode:vertical-rl; transform:rotate(180deg);
+}
+/* Color now encodes the label's own unit scale (M vs K/plain) rather than
+   "which year" -- the bar's own color + is-latest's bold weight already show which
+   year is 2025, so this doesn't need to repeat that. --bu-unit-strong/--bu-unit-soft
+   are fixed per-theme hex values (see the three :root color blocks), NOT a
+   color-mix() formula -- an earlier color-mix(accent, page-plane) version looked fine
+   in light mode but mixed toward near-black in dark mode, making K-scale labels
+   nearly invisible. Fixed hex values sidestep that. */
+.bu-compare-bar-lbl.unit-m{ color: var(--bu-unit-strong); }
+.bu-compare-bar-lbl.unit-k, .bu-compare-bar-lbl.unit-plain{ color: var(--bu-unit-soft); }
+.bu-compare-bar-lbl.is-latest{ font-weight:800; }
+.bu-compare-bar{ width:9px; border-radius:2px 2px 0 0; background:var(--bu-compare-grey); }
+.bu-compare-bar.is-latest{ background:var(--accent); }
+.bu-compare-logo{
+  height:26px; width:44px; display:flex; align-items:center; justify-content:center;
+  background:#fff; border-radius:6px; border:1px solid var(--border); margin-top:10px; flex:none;
+}
+.bu-compare-logo img{ max-width:100%; max-height:100%; object-fit:contain; }
+.bu-compare-logo-fallback{ font-size:9px; font-weight:700; color:var(--accent); }
+.bu-compare-name{ font-size:9px; font-weight:700; text-align:center; margin-top:5px; line-height:1.2; color:var(--text-primary); }
+.bu-compare-diff{ font-size:9.5px; font-weight:800; margin-top:3px; }
+.bu-compare-diff.good{ color:var(--good); }
+.bu-compare-diff.bad{ color:var(--critical); }
+/* Small round arrow button (chosen over the earlier filled text pill "View detail ->",
+   which read as too heavy/plain for how little space it has). No text -- the arrow
+   plus its position right under the highlighted BU is self-explanatory in context.
+   aria-label carries the accessible name since there's no visible text. */
+.bu-compare-view-btn{
+  margin-top:6px; border:none; background:var(--accent); color:#fff;
+  width:22px; height:22px; padding:0; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  cursor:pointer; font-family:inherit;
+  box-shadow: 0 2px 6px color-mix(in oklab, var(--accent) 45%, transparent);
+}
+.bu-compare-view-btn::after{ content:'\2192'; font-size:13px; line-height:1; color:#fff; }
 
 .metric-block{ margin-top:14px; padding:12px; border-radius:10px; background:var(--page-plane); border:1px solid var(--border); }
 .metric-block:first-child{ margin-top:0; }
@@ -859,12 +935,18 @@ const AX_STATE = new Map();
 function axDefaultCollapsed(box, boxSel){
   // Breakdown cards are the deep detail; they start closed wherever they appear.
   if(boxSel === '.subbreak-box') return true;
+  // The BU comparison chart always starts open — it's a "how do we compare" overview,
+  // not per-metric detail, and the ?bu= highlight (see Init) needs it visible.
+  if(box.classList.contains('bu-compare-card')) return false;
   const parent = box.parentNode;
   // A .card nested inside another card is the BU "Detail Breakdown", which only appears
   // once the viewer has already clicked into a business unit -- collapsing that would hide
   // the very thing they just asked to see.
   if(!parent || !parent.classList || !parent.classList.contains('tabpanel')) return false;
-  const cards = Array.prototype.filter.call(parent.children, c => c.classList.contains('card'));
+  // Excluded from the count so inserting the BU comparison card above the existing ones
+  // doesn't shift THEIR open/collapsed defaults (they're keyed by position).
+  const cards = Array.prototype.filter.call(parent.children,
+    c => c.classList.contains('card') && !c.classList.contains('bu-compare-card'));
   return cards.indexOf(box) > 0;   // first card in the tab stays open, the rest start closed
 }
 
@@ -1953,7 +2035,153 @@ function initZeroLandfill(){
   return render;
 }
 
-// ---------- GHG vs Science-based Target composite chart ----------
+// ---------- BU comparison chart (Summary tab) ----------
+// Every BU's own bars for 2021-2025, latest year highlighted, sorted by that latest
+// value — mirrors the exec-deck "Total Waste by BU" slide so the dashboard covers the
+// same view instead of needing a screenshot of the PPT. Plain divs, not SVG (no entrance
+// animation from axReveal, which only wipes SVGs — acceptable for a v1). Ported verbatim
+// (single-card version — only one metric here, not GHG/Energy's two) from the finalized
+// GHG/Energy dashboard.
+function buildBUCompareChart(metricKey){
+  const years = [2021,2022,2023,2024,2025];
+  const idxs = years.map(y=>DATA.years.indexOf(y));
+  const rows = Object.keys(DATA.bu).filter(n=>!BU_HIDDEN.has(n)).map(name=>{
+    const series = idxs.map(i=> DATA.bu[name][metricKey][i]);
+    return {name, series};
+  }).sort((a,b)=> b.series[b.series.length-1] - a.series[a.series.length-1]);
+
+  const maxVal = Math.max(...rows.flatMap(r=>r.series));
+  const chartH = 130;
+
+  const wrap = document.createElement('div');
+  wrap.className = 'bu-compare-scroll';
+  const inner = document.createElement('div');
+  inner.className = 'bu-compare-inner';
+
+  rows.forEach(r=>{
+    const col = document.createElement('div');
+    col.className = 'bu-compare-col';
+    col.dataset.buKey = r.name;
+
+    const barsWrap = document.createElement('div');
+    barsWrap.className = 'bu-compare-bars';
+    barsWrap.style.height = chartH + 'px';
+    r.series.forEach((v,i)=>{
+      const isLatest = i === r.series.length-1;
+      const h = Math.max(2, (v/maxVal)*chartH);
+      const barCol = document.createElement('div');
+      barCol.className = 'bu-compare-bar-col';
+      const lbl = document.createElement('div');
+      lbl.className = 'bu-compare-bar-lbl' + (isLatest ? ' is-latest' : '');
+      // fmtShort auto-picks M/K/plain per BU instead of a fixed divisor -- see the
+      // .bu-compare-bar-lbl CSS comment for why a fixed scale is wrong here.
+      lbl.textContent = fmtShort(v, '', 2).trim();
+      if(lbl.textContent.endsWith('M')) lbl.classList.add('unit-m');
+      else if(lbl.textContent.endsWith('K')) lbl.classList.add('unit-k');
+      else lbl.classList.add('unit-plain');
+      const bar = document.createElement('div');
+      bar.className = 'bu-compare-bar' + (isLatest ? ' is-latest' : '');
+      bar.style.height = h.toFixed(1) + 'px';
+      barCol.appendChild(lbl); barCol.appendChild(bar);
+      barsWrap.appendChild(barCol);
+    });
+    col.appendChild(barsWrap);
+
+    const logo = BU_LOGOS[r.name];
+    const logoWrap = document.createElement('div');
+    logoWrap.className = 'bu-compare-logo';
+    logoWrap.innerHTML = logo
+      ? '<img src="'+logo+'" alt="">'
+      : '<span class="bu-compare-logo-fallback">'+tname(r.name).slice(0,2).toUpperCase()+'</span>';
+    col.appendChild(logoWrap);
+
+    const nameLbl = document.createElement('div');
+    nameLbl.className = 'bu-compare-name';
+    nameLbl.textContent = tname(r.name);
+    col.appendChild(nameLbl);
+
+    const prev = r.series[r.series.length-2];
+    const latest = r.series[r.series.length-1];
+    const diffPct = (prev !== undefined && prev !== null && Math.abs(prev) > 1e-9) ? ((latest-prev)/Math.abs(prev)*100) : null;
+    if(diffPct !== null){
+      const good = diffPct <= 0; // goodDir 'down' for total waste generated, same convention as GHG/Energy
+      const diffLbl = document.createElement('div');
+      diffLbl.className = 'bu-compare-diff ' + (good ? 'good' : 'bad');
+      diffLbl.textContent = (diffPct>0?'+':'') + diffPct.toFixed(2) + '%';
+      col.appendChild(diffLbl);
+    }
+
+    inner.appendChild(col);
+  });
+
+  wrap.appendChild(inner);
+  return wrap;
+}
+
+// unitLabel is the BASE unit only (e.g. "Tons", not "M Tons") -- each bar's own label
+// already carries its own M/K scale letter via fmtShort (see buildBUCompareChart).
+function buildCompareCard(title, metricKey, unitLabel){
+  const card = document.createElement('div');
+  card.className = 'card bu-compare-card';
+  const head = document.createElement('h2');
+  head.textContent = title;
+  card.appendChild(head);
+  const legend = document.createElement('div');
+  legend.className = 'bu-compare-legend';
+  legend.innerHTML =
+    '<span><span class="bu-compare-swatch grey"></span>2021&ndash;2024</span>'+
+    '<span><span class="bu-compare-swatch latest"></span>2025</span>'+
+    '<span>% diff. 2025/2024</span>'+
+    '<span class="bu-compare-unit">Unit: '+unitLabel+'</span>';
+  card.appendChild(legend);
+  card.appendChild(buildBUCompareChart(metricKey));
+  return card;
+}
+
+// Inserted right after the KPI row — above the existing cards, since this "how do we
+// compare" view is meant to be seen before drilling into any one metric's own
+// year-by-year detail. Waste gets a single card (only Total Generated, unlike GHG/
+// Energy's two metrics). (See also axDefaultCollapsed's .bu-compare-card exception,
+// which keeps this open by default without disturbing the existing cards' own
+// open/collapsed defaults.)
+function renderBUCompareCharts(){
+  const kpiRow = document.getElementById('kpiRow');
+  if(!kpiRow) return;
+  const card = buildCompareCard('Total Waste Generated by Business Unit', 'generated', 'Tons');
+  kpiRow.parentNode.insertBefore(card, kpiRow.nextSibling);
+}
+
+// Highlights one or more BU columns in the BU-comparison chart (used by the ?bu= URL
+// param in Init) and drops a "view full detail" button under each highlighted column,
+// so a QR-code visitor who lands on Summary can still reach that BU's full detail view
+// without hunting for it in the picker grid.
+//
+// `names` is an ARRAY of raw BU keys (not one string) because a single QR param can
+// resolve to several columns -- e.g. ?bu=cpf lights up both "CPF THAI" and "CPF Oversea".
+// Each highlighted column gets its OWN button that opens ITS OWN detail page, so the two
+// CPF columns don't both open the same BU. onViewDetail is called with the column's key.
+function highlightBUCompare(names, onViewDetail){
+  const wanted = new Set(Array.isArray(names) ? names : [names]);
+  document.querySelectorAll('.bu-compare-col').forEach(col=>{
+    const old = col.querySelector('.bu-compare-view-btn');
+    if(old) old.remove();
+    col.classList.remove('is-highlighted');
+  });
+  let first = true;
+  document.querySelectorAll('.bu-compare-col').forEach(col=>{
+    if(!wanted.has(col.dataset.buKey)) return;
+    const key = col.dataset.buKey;
+    col.classList.add('is-highlighted');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'bu-compare-view-btn';
+    btn.setAttribute('aria-label', 'View ' + tname(key) + ' detail');
+    btn.addEventListener('click', function(){ onViewDetail(key); });
+    col.appendChild(btn);
+    if(first){ col.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'}); first = false; }
+  });
+}
+
 // ---------- By-BU profile (pick a BU, see every metric stacked) ----------
 function buildBUProfile(dict, detailDict, expandableKeys){
   const pickerCard = document.getElementById('buPickerCard');
@@ -2255,6 +2483,7 @@ function initTheme(redrawFns){
 
 // ---------- Init ----------
 buildKPI();
+renderBUCompareCharts();
 buildMetricSeg();
 drawMainChart();
 const renderOverviewDetail = initOverviewDetail();
@@ -2268,12 +2497,17 @@ initTheme([renderOverviewDetail, renderBU]);
 // Business Units panel that is still display:none at this point).
 axCollapsible();
 
-// ---------- URL param: jump straight to a Business Unit on load (?bu=makro) ----------
-// Lets a link/QR code point an executive directly at "their" BU instead of landing on
-// the Summary tab and making them find it in the picker grid. Matching is deliberately
-// forgiving (case-insensitive, punctuation-insensitive) since a URL author may not know
-// the exact internal BU code (e.g. "AGRO CPG:BANGLADESH" vs a param like "agro-cpg-bangladesh").
-let urlBUMatched = false;
+// ---------- URL param: highlight a Business Unit on load (?bu=makro) ----------
+// Lets a link/QR code point an executive straight at "their" BU. Stays on the Summary
+// tab (rather than jumping into the Business Units detail view) so the BU comparison
+// chart above is the first thing seen — the highlighted column carries its own "View
+// detail →" button for anyone who wants the full per-metric breakdown after that.
+// Matching is deliberately forgiving (case-insensitive, punctuation-insensitive) since a
+// URL author may not know the exact internal BU code. It matches in two passes:
+//   1) EXACT (normalized) match against the raw key OR the translated display name.
+//   2) PREFIX fallback (only when pass 1 found nothing, requires >=2 chars): treats the
+//      param as a family prefix, so a short natural QR name lights up the BU(s) whose
+//      name STARTS with it (e.g. ?bu=cpf -> "CPF THAI" + "CPF Oversea").
 (function(){
   const want = (new URLSearchParams(window.location.search).get('bu') || '').trim();
   if(!want) return;
@@ -2281,24 +2515,24 @@ let urlBUMatched = false;
   const wantLower = want.toLowerCase();
   const wantNorm = norm(want);
   const keys = renderBU.buKeys || [];
-  const match = keys.find(k => k.toLowerCase() === wantLower)
-    || keys.find(k => tname(k).toLowerCase() === wantLower)
-    || keys.find(k => norm(k) === wantNorm)
-    || keys.find(k => norm(tname(k)) === wantNorm);
-  if(!match) return;
-  const buTabBtn = document.querySelector('.tab-btn[data-tab="bu"]');
-  if(buTabBtn) buTabBtn.click();
-  renderBU.openDetail(match);
-  urlBUMatched = true;
+
+  let matches = keys.filter(k => k.toLowerCase() === wantLower || tname(k).toLowerCase() === wantLower);
+  if(!matches.length) matches = keys.filter(k => norm(k) === wantNorm || norm(tname(k)) === wantNorm);
+  if(!matches.length && wantNorm.length >= 2){
+    matches = keys.filter(k => norm(k).startsWith(wantNorm) || norm(tname(k)).startsWith(wantNorm));
+  }
+  if(!matches.length) return;
+
+  highlightBUCompare(matches, function(key){
+    const buTabBtn = document.querySelector('.tab-btn[data-tab="bu"]');
+    if(buTabBtn) buTabBtn.click();
+    renderBU.openDetail(key);
+  });
 })();
 
 // First paint: animate the Summary tab in. rAF so every chart has been laid out and has a
 // real height before axReveal decides which SVGs are charts and which are inline icons.
-// Skipped when a ?bu= param above already jumped straight to a BU's detail view instead —
-// that tab switch ran its own reveal for the Business Units panel.
-if(!urlBUMatched){
-  requestAnimationFrame(()=> axReveal(document.getElementById('panel-overview')));
-}
+requestAnimationFrame(()=> axReveal(document.getElementById('panel-overview')));
 
 // A resize redraws the charts from scratch; that is a re-layout of what the viewer already
 // has on screen, so it must not replay the entrance animations (rotating a phone would
