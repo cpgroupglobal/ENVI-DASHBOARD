@@ -412,8 +412,8 @@ svg.donut{ width:150px; height:150px; display:block; }
    color-mix() formula -- an earlier color-mix(accent, page-plane) version looked fine
    in light mode but mixed toward near-black in dark mode, making K-scale labels
    nearly invisible. Fixed hex values sidestep that. */
-.bu-compare-bar-lbl.unit-m{ color: var(--bu-unit-strong); }
-.bu-compare-bar-lbl.unit-k, .bu-compare-bar-lbl.unit-plain{ color: var(--bu-unit-soft); }
+.bu-compare-bar-lbl.unit-m, .bu-compare-bar-lbl.unit-k{ color: var(--bu-unit-strong); }
+.bu-compare-bar-lbl.unit-plain{ color: var(--bu-unit-soft); }
 .bu-compare-bar-lbl.is-latest{ font-weight:800; }
 .bu-compare-bar{ width:9px; border-radius:2px 2px 0 0; background:var(--bu-compare-grey); }
 .bu-compare-bar.is-latest{ background:var(--accent); }
@@ -1833,7 +1833,10 @@ function buildBUCompareChart(metricKey){
       lbl.className = 'bu-compare-bar-lbl' + (isLatest ? ' is-latest' : '');
       // fmtShort auto-picks M/K/plain per BU instead of a fixed divisor -- see the
       // .bu-compare-bar-lbl CSS comment for why a fixed scale is wrong here.
-      lbl.textContent = fmtShort(v, '', 2).trim();
+      // A space between the number and its M/K scale letter ("1.48 M") reads easier
+      // than jammed together -- added after fmtShort so .endsWith('M')/'K' below still
+      // see the bare letter. M and K now share the same strong label color (see CSS).
+      lbl.textContent = fmtShort(v, '', 2).trim().replace(/(\d)([MK])$/, '$1 $2');
       if(lbl.textContent.endsWith('M')) lbl.classList.add('unit-m');
       else if(lbl.textContent.endsWith('K')) lbl.classList.add('unit-k');
       else lbl.classList.add('unit-plain');
