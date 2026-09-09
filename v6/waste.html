@@ -2567,7 +2567,39 @@ window.addEventListener('resize', ()=>{
         sc.scrollLeft += (r1.left-r0.left) - (sc.clientWidth - r1.width)/2; }
     },80);
   }
+  // Scan-in scope lock: a QR is printed per-BU, so once ?bu= is on the URL the viewer
+  // should only ever see THAT business unit's detail -- never browse into another BU's
+  // numbers via the "Business Units" tab's picker grid or the detail view's back arrow.
+  // Redirects both through the same "jump straight into MY detail" path the pinned
+  // chart's own arrow already uses, and sends the back arrow to the CP Group tab instead
+  // of the grid. Only engages when ?bu= actually matched a BU (the pinned chart grew an
+  // arrow); a generic v6 link with no ?bu= still browses normally.
+  function lockToOwnBU(){
+    var bu=(new URLSearchParams(location.search).get('bu')||'').trim();
+    if(!bu) return;
+    var buTabBtn=document.querySelector('.tab-btn[data-tab="bu"]');
+    var backBtn=document.getElementById('buBackBtn');
+    if(!buTabBtn) return;
+    var locking=false;
+    buTabBtn.addEventListener('click', function(e){
+      if(locking) return;
+      var arrowBtn=document.querySelector('.bu-compare-view-btn');
+      if(!arrowBtn) return;
+      e.stopImmediatePropagation(); e.preventDefault();
+      locking=true;
+      arrowBtn.click();
+      locking=false;
+    }, true);
+    if(backBtn){
+      backBtn.addEventListener('click', function(e){
+        e.stopImmediatePropagation(); e.preventDefault();
+        var ovTab=document.querySelector('.tab-btn[data-tab="overview"]');
+        if(ovTab) ovTab.click();
+      }, true);
+    }
+  }
   setTimeout(restructure,0);
+  lockToOwnBU();
   function postH(){ try{ parent.postMessage({v6h:Math.ceil(document.documentElement.getBoundingClientRect().height), v6frame:(location.pathname.split('/').pop()||'')}, '*'); }catch(e){} }
   window.addEventListener('load', function(){ setTimeout(postH,150); setTimeout(postH,500); setTimeout(postH,1200); });
   try{ new ResizeObserver(function(){ postH(); }).observe(document.body); }catch(e){}
