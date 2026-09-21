@@ -31,14 +31,6 @@
   /* GHG Reduction Pathway (waterfall) tokens — distinct from --target-line/--good so all
      four series (target, BAU, insetting, offset) read apart at a glance. */
   --bau-line:       #8a8a86;
-  /* Prior-years bar in the BU comparison charts (Summary tab) — deliberately flatter than
-     --baseline/--gridline so the highlighted latest-year bar (--accent) is the only warm
-     color in the chart. */
-  --bu-compare-grey: #d8d7d1;
-  /* BU comparison chart bar labels: color encodes the label's own unit scale
-     (M vs K/plain), fixed per theme -- see the CSS comment on .bu-compare-bar-lbl. */
-  --bu-unit-strong: #1f6b41;
-  --bu-unit-soft:   #7EAE93;
 
   /* Environmental green ramp — darkest to lightest, validated as an ordinal ramp
      (monotone lightness, adjacent dL >= 0.06, light end clears 2:1 on this surface).
@@ -65,9 +57,6 @@
   --target-line:    #e0a020;
   --surface-alt:    #242423;
   --bau-line:       #9a9a94;
-  --bu-compare-grey: #4b4b47;
-  --bu-unit-strong: #4FCB8C;
-  --bu-unit-soft:   #6E8F7E;
 
   --shade0:     #0E7048;
   --shade1:     #2C8B57;
@@ -92,9 +81,6 @@
     --target-line:    #e0a020;
     --surface-alt:    #242423;
     --bau-line:       #9a9a94;
-    --bu-compare-grey: #4b4b47;
-    --bu-unit-strong: #4FCB8C;
-    --bu-unit-soft:   #6E8F7E;
 
     --shade0:     #0E7048;
   --shade1:     #2C8B57;
@@ -278,15 +264,25 @@ svg.linechart{ width:100%; height:200px; display:block; overflow:visible; }
 :root{
   --yr0:#CAEADD; --yr1:#A8DCC6; --yr2:#84CDAE; --yr3:#60BE97; --yr4:#419F78; --yr5:#0B6B43;
   --ym-accent:#0B6B43;
+
+  /* GJ teal ramp for dual-unit Bio Energy card */
+  --gj0:#cfe3e0; --gj1:#aecdc9; --gj2:#84b3ad; --gj3:#5d9691; --gj4:#3c7873; --gj5:#1f5551;
+  --gj-accent:#1f5551;
 }
 :root[data-theme="dark"]{
   --yr0:#7DCAAA; --yr1:#5ABC93; --yr2:#45A87F; --yr3:#3A8D6A; --yr4:#2F7457; --yr5:#265C46;
   --ym-accent:#6ED89B;
+
+  --gj0:#4a8a85; --gj1:#3d7a75; --gj2:#336965; --gj3:#2a5956; --gj4:#224a47; --gj5:#1a3c3a;
+  --gj-accent:#7BC4BE;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
     --yr0:#7DCAAA; --yr1:#5ABC93; --yr2:#45A87F; --yr3:#3A8D6A; --yr4:#2F7457; --yr5:#265C46;
     --ym-accent:#6ED89B;
+
+    --gj0:#4a8a85; --gj1:#3d7a75; --gj2:#336965; --gj3:#2a5956; --gj4:#224a47; --gj5:#1a3c3a;
+    --gj-accent:#7BC4BE;
   }
 }
 .ym-head{ display:flex; gap:2px; margin:0 66px 0 90px; padding-bottom:5px; border-bottom:1px solid var(--gridline); }
@@ -311,6 +307,27 @@ svg.linechart{ width:100%; height:200px; display:block; overflow:visible; }
 .ym-yoy.good, .ym-since b.good{ color:var(--good); }
 .ym-yoy.bad, .ym-since b.bad{ color:var(--critical); }
 .ym-yoy.neutral, .ym-since b.neutral{ color:var(--text-muted); }
+
+/* ---- Dual-unit Bio Energy card ---- */
+.du-fuelrow{ display:flex; align-items:center; gap:6px; padding:9px 0; border-top:1px solid var(--gridline); }
+.du-fuelrow:first-of-type{ border-top:none; }
+.du-left{ width:84px; flex:none; display:flex; flex-direction:column; gap:1px; padding-bottom:1px; }
+.du-name{ font-size:11.5px; font-weight:700; color:var(--text-primary); line-height:1.2; }
+.du-since{ font-size:9px; color:var(--text-secondary, var(--text-muted)); white-space:nowrap; }
+.du-since b{ font-weight:700; }
+.du-years{ flex:1; display:flex; flex-direction:column; gap:3px; min-width:0; }
+.du-unitrow{ display:flex; align-items:flex-end; gap:4px; }
+.du-unittag{ width:28px; flex:none; font-size:9.5px; color:var(--text-secondary); font-weight:800; padding-bottom:3px; text-align:right; }
+.du-cols{ flex:1; display:flex; gap:2px; align-items:flex-end; height:36px; border-bottom:1px solid var(--gridline); }
+.du-cols.gj{ height:24px; }
+.du-col{ flex:1; height:100%; display:flex; align-items:flex-end; }
+.du-bar{ width:100%; border-radius:2px 2px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:1px; font-size:8px; font-weight:700; color:var(--text-primary); box-sizing:border-box; overflow:hidden; line-height:1; }
+.du-bar.tiny{ font-size:7px; }
+.du-right{ width:72px; flex:none; text-align:right; display:flex; flex-direction:column; gap:1px; padding-bottom:1px; }
+.du-cur-ton{ font-size:13px; font-weight:800; color:var(--ym-accent); line-height:1.2; }
+.du-cur-gj{ font-size:13px; font-weight:700; color:var(--gj-accent); line-height:1.2; }
+.du-yoy{ font-size:8.5px; font-weight:700; white-space:nowrap; }
+.du-yoy.good{ color:var(--good); } .du-yoy.bad{ color:var(--critical); } .du-yoy.neutral{ color:var(--text-muted); }
 
 /* Two columns: donut (with the year's total in its hole) left, value bars right.
    They wrap to stacked rows on narrow screens. */
@@ -409,70 +426,6 @@ svg.donut{ width:150px; height:150px; display:block; }
 .bu-summary-value .delta.good{ color:var(--good); }
 .bu-summary-value .delta.bad{ color:var(--critical); }
 .bu-summary-value .delta.neutral{ color:var(--text-muted); }
-
-/* BU comparison charts (Summary tab): every BU's own last-5-years bars side by side,
-   sorted by the latest year — the web equivalent of the exec-deck "GHG/Energy by BU"
-   slides. Horizontally scrollable since ~20 BU columns never fit one screen width. */
-.bu-compare-legend{ display:flex; gap:14px; align-items:center; font-size:11px; color:var(--text-muted); margin-bottom:10px; flex-wrap:wrap; }
-.bu-compare-swatch{ display:inline-block; width:9px; height:9px; border-radius:2px; margin-right:5px; vertical-align:middle; }
-.bu-compare-swatch.grey{ background:var(--bu-compare-grey); }
-.bu-compare-swatch.latest{ background:var(--accent); }
-.bu-compare-unit{ margin-left:auto; }
-.bu-compare-scroll{ overflow-x:auto; padding-bottom:6px; margin:0 -14px; padding-left:14px; padding-right:14px; }
-/* flex-start, not flex-end: the bars sit at the TOP of each column (bars, then logo,
-   then name, then diff badge below). flex-end would bottom-align each column's footer
-   instead -- since footer height varies with name length / whether a diff badge exists,
-   that pushes the bars themselves out of alignment across columns. flex-start keeps
-   every column's bar baseline level regardless of footer height. */
-.bu-compare-inner{ display:flex; gap:16px; align-items:flex-start; min-width:max-content; }
-.bu-compare-col{
-  display:flex; flex-direction:column; align-items:center; width:74px; flex:none;
-  padding:8px 4px 10px; border-radius:10px; border:1.5px solid transparent;
-}
-.bu-compare-col.is-highlighted{
-  border-color: var(--accent);
-  background: color-mix(in oklab, var(--accent) 10%, transparent);
-}
-.bu-compare-bars{ display:flex; align-items:flex-end; gap:3px; }
-.bu-compare-bar-col{ display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
-.bu-compare-bar-lbl{
-  font-size:8px; font-weight:600; margin-bottom:3px;
-  white-space:nowrap; writing-mode:vertical-rl; transform:rotate(180deg);
-}
-/* Color now encodes the label's own unit scale (M vs K/plain) rather than
-   "which year" -- the bar's own color + is-latest's bold weight already show which
-   year is 2025, so this doesn't need to repeat that. --bu-unit-strong/--bu-unit-soft
-   are fixed per-theme hex values (see the three :root color blocks), NOT a
-   color-mix() formula -- an earlier color-mix(accent, page-plane) version looked fine
-   in light mode but mixed toward near-black in dark mode, making K-scale labels
-   nearly invisible. Fixed hex values sidestep that. */
-.bu-compare-bar-lbl.unit-m{ color: var(--bu-unit-strong); }
-.bu-compare-bar-lbl.unit-k, .bu-compare-bar-lbl.unit-plain{ color: var(--bu-unit-soft); }
-.bu-compare-bar-lbl.is-latest{ font-weight:800; }
-.bu-compare-bar{ width:9px; border-radius:2px 2px 0 0; background:var(--bu-compare-grey); }
-.bu-compare-bar.is-latest{ background:var(--accent); }
-.bu-compare-logo{
-  height:26px; width:44px; display:flex; align-items:center; justify-content:center;
-  background:#fff; border-radius:6px; border:1px solid var(--border); margin-top:10px; flex:none;
-}
-.bu-compare-logo img{ max-width:100%; max-height:100%; object-fit:contain; }
-.bu-compare-logo-fallback{ font-size:9px; font-weight:700; color:var(--accent); }
-.bu-compare-name{ font-size:9px; font-weight:700; text-align:center; margin-top:5px; line-height:1.2; color:var(--text-primary); }
-.bu-compare-diff{ font-size:9.5px; font-weight:800; margin-top:3px; }
-.bu-compare-diff.good{ color:var(--good); }
-.bu-compare-diff.bad{ color:var(--critical); }
-/* Small round arrow button (chosen over the earlier filled text pill "View detail ->",
-   which read as too heavy/plain for how little space it has). No text -- the arrow
-   plus its position right under the highlighted BU is self-explanatory in context.
-   aria-label carries the accessible name since there's no visible text. */
-.bu-compare-view-btn{
-  margin-top:6px; border:none; background:var(--accent); color:#fff;
-  width:22px; height:22px; padding:0; border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  cursor:pointer; font-family:inherit;
-  box-shadow: 0 2px 6px color-mix(in oklab, var(--accent) 45%, transparent);
-}
-.bu-compare-view-btn::after{ content:'\2192'; font-size:13px; line-height:1; color:#fff; }
 
 .metric-block{ margin-top:14px; padding:12px; border-radius:10px; background:var(--page-plane); border:1px solid var(--border); }
 .metric-block:first-child{ margin-top:0; }
@@ -581,7 +534,7 @@ footer{ padding: 10px 16px 4px; font-size:11px; color: var(--text-muted); line-h
 .ax-toggle:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; border-radius:4px; }
 .ax-caret{
   margin-left:auto; flex:none;
-  font-size:14px; line-height:1;
+  font-size:11px; line-height:1;
   color:var(--text-muted);
   transition: transform .28s cubic-bezier(.4,0,.2,1);
 }
@@ -988,18 +941,12 @@ const AX_STATE = new Map();
 function axDefaultCollapsed(box, boxSel){
   // Breakdown cards are the deep detail; they start closed wherever they appear.
   if(boxSel === '.subbreak-box') return true;
-  // The BU comparison charts always start open — they're a "how do we compare" overview,
-  // not per-metric detail, and the ?bu= highlight (see Init) needs both charts visible.
-  if(box.classList.contains('bu-compare-card')) return false;
   const parent = box.parentNode;
   // A .card nested inside another card is the BU "Detail Breakdown", which only appears
   // once the viewer has already clicked into a business unit -- collapsing that would hide
   // the very thing they just asked to see.
   if(!parent || !parent.classList || !parent.classList.contains('tabpanel')) return false;
-  // Excluded from the count so inserting the two BU comparison cards above the existing
-  // ones doesn't shift THEIR open/collapsed defaults (they're keyed by position).
-  const cards = Array.prototype.filter.call(parent.children,
-    c => c.classList.contains('card') && !c.classList.contains('bu-compare-card'));
+  const cards = Array.prototype.filter.call(parent.children, c => c.classList.contains('card'));
   return cards.indexOf(box) > 0;   // first card in the tab stays open, the rest start closed
 }
 
@@ -1152,162 +1099,6 @@ function labelOn(bg){ return relLum(bg) > 0.35 ? BAR_LABEL_DARK : '#ffffff'; }
 
 function resolveColor(varName){
   return getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
-}
-
-// ---------- BU comparison charts (Summary tab) ----------
-// Every BU's own bars for 2021-2025, latest year highlighted, sorted by that latest
-// value — mirrors the exec-deck "GHG/Energy by BU" slides so the dashboard covers the
-// same view instead of needing a screenshot of the PPT. Plain divs, not SVG (no entrance
-// animation from axReveal, which only wipes SVGs — acceptable for a v1).
-function buildBUCompareChart(metricKey){
-  const years = [2021,2022,2023,2024,2025];
-  const idxs = years.map(y=>DATA.years.indexOf(y));
-  const rows = Object.keys(DATA.bu).filter(n=>!BU_HIDDEN.has(n)).map(name=>{
-    const series = idxs.map(i=> DATA.bu[name][metricKey][i]);
-    return {name, series};
-  }).sort((a,b)=> b.series[b.series.length-1] - a.series[a.series.length-1]);
-
-  const maxVal = Math.max(...rows.flatMap(r=>r.series));
-  const chartH = 130;
-
-  const wrap = document.createElement('div');
-  wrap.className = 'bu-compare-scroll';
-  const inner = document.createElement('div');
-  inner.className = 'bu-compare-inner';
-
-  rows.forEach(r=>{
-    const col = document.createElement('div');
-    col.className = 'bu-compare-col';
-    col.dataset.buKey = r.name;
-
-    const barsWrap = document.createElement('div');
-    barsWrap.className = 'bu-compare-bars';
-    barsWrap.style.height = chartH + 'px';
-    r.series.forEach((v,i)=>{
-      const isLatest = i === r.series.length-1;
-      const h = Math.max(2, (v/maxVal)*chartH);
-      const barCol = document.createElement('div');
-      barCol.className = 'bu-compare-bar-col';
-      const lbl = document.createElement('div');
-      lbl.className = 'bu-compare-bar-lbl' + (isLatest ? ' is-latest' : '');
-      // fmtShort auto-picks M/K/plain per BU instead of a fixed "M" divisor -- the
-      // BUs range from ~1.5M down to ~50 raw units (tCO2e / GJ), and a fixed "M"
-      // scale made every small BU's label round to "0.00", which read to an
-      // executive as "no data" rather than "small but real". Each label now carries
-      // its own scale letter (e.g. "1.48M" next to "51.21" with no letter at all).
-      lbl.textContent = fmtShort(v, '', 2).trim();
-      // Color-code the label by its own scale letter (unit-m/unit-k/unit-plain), so
-      // "1.48M" and "41.65K" read as visibly different weights of number at a glance,
-      // not just different suffix letters -- see the .bu-compare-bar-lbl CSS comment.
-      if(lbl.textContent.endsWith('M')) lbl.classList.add('unit-m');
-      else if(lbl.textContent.endsWith('K')) lbl.classList.add('unit-k');
-      else lbl.classList.add('unit-plain');
-      const bar = document.createElement('div');
-      bar.className = 'bu-compare-bar' + (isLatest ? ' is-latest' : '');
-      bar.style.height = h.toFixed(1) + 'px';
-      barCol.appendChild(lbl); barCol.appendChild(bar);
-      barsWrap.appendChild(barCol);
-    });
-    col.appendChild(barsWrap);
-
-    const logo = BU_LOGOS[r.name];
-    const logoWrap = document.createElement('div');
-    logoWrap.className = 'bu-compare-logo';
-    logoWrap.innerHTML = logo
-      ? '<img src="'+logo+'" alt="">'
-      : '<span class="bu-compare-logo-fallback">'+tname(r.name).slice(0,2).toUpperCase()+'</span>';
-    col.appendChild(logoWrap);
-
-    const nameLbl = document.createElement('div');
-    nameLbl.className = 'bu-compare-name';
-    nameLbl.textContent = tname(r.name);
-    col.appendChild(nameLbl);
-
-    const prev = r.series[r.series.length-2];
-    const latest = r.series[r.series.length-1];
-    const diffPct = (prev !== undefined && prev !== null && Math.abs(prev) > 1e-9) ? ((latest-prev)/Math.abs(prev)*100) : null;
-    if(diffPct !== null){
-      const good = diffPct <= 0; // goodDir 'down' for both energy and ghg (see METRICS)
-      const diffLbl = document.createElement('div');
-      diffLbl.className = 'bu-compare-diff ' + (good ? 'good' : 'bad');
-      diffLbl.textContent = (diffPct>0?'+':'') + diffPct.toFixed(2) + '%';
-      col.appendChild(diffLbl);
-    }
-
-    inner.appendChild(col);
-  });
-
-  wrap.appendChild(inner);
-  return wrap;
-}
-
-// unitLabel is the BASE unit only (e.g. "tCO2e", not "M tCO2e") -- each bar's own
-// label already carries its own M/K scale letter via fmtShort (see
-// buildBUCompareChart), so the legend no longer forces one fixed scale for every BU.
-function buildCompareCard(title, metricKey, unitLabel){
-  const card = document.createElement('div');
-  card.className = 'card bu-compare-card';
-  const head = document.createElement('h2');
-  head.textContent = title;
-  card.appendChild(head);
-  const legend = document.createElement('div');
-  legend.className = 'bu-compare-legend';
-  legend.innerHTML =
-    '<span><span class="bu-compare-swatch grey"></span>2021&ndash;2024</span>'+
-    '<span><span class="bu-compare-swatch latest"></span>2025</span>'+
-    '<span>% diff. 2025/2024</span>'+
-    '<span class="bu-compare-unit">Unit: '+unitLabel+'</span>';
-  card.appendChild(legend);
-  card.appendChild(buildBUCompareChart(metricKey));
-  return card;
-}
-
-// Inserted right after the KPI row — above the existing Source Detail / SBT cards, since
-// this "how do we compare" view is meant to be seen before drilling into any one metric's
-// own year-by-year detail. (See also axDefaultCollapsed's .bu-compare-card exception,
-// which keeps both of these open by default without disturbing the existing cards' own
-// open/collapsed defaults.)
-function renderBUCompareCharts(){
-  const kpiRow = document.getElementById('kpiRow');
-  if(!kpiRow) return;
-  const ghgCard = buildCompareCard('GHG Emissions by Business Unit', 'ghg', 'tCO2e');
-  const enCard = buildCompareCard('Energy Consumption by Business Unit', 'energy', 'GJ');
-  kpiRow.parentNode.insertBefore(ghgCard, kpiRow.nextSibling);
-  ghgCard.parentNode.insertBefore(enCard, ghgCard.nextSibling);
-}
-
-// Highlights one or more BU columns in every BU-comparison chart (used by the ?bu= URL
-// param in Init) and drops a "view full detail" button under each highlighted column,
-// so a QR-code visitor who lands on Summary can still reach that BU's full detail view
-// without hunting for it in the picker grid.
-//
-// `names` is an ARRAY of raw BU keys (not one string) because a single QR param can
-// resolve to several columns -- e.g. ?bu=cpf lights up both "CPF THAI" and "CPF Oversea".
-// Each highlighted column gets its OWN button that opens ITS OWN detail page, so the two
-// CPF columns don't both open the same BU. onViewDetail is called with the column's key.
-function highlightBUCompare(names, onViewDetail){
-  const wanted = new Set(Array.isArray(names) ? names : [names]);
-  document.querySelectorAll('.bu-compare-col').forEach(col=>{
-    const old = col.querySelector('.bu-compare-view-btn');
-    if(old) old.remove();
-    col.classList.remove('is-highlighted');
-  });
-  let first = true;
-  document.querySelectorAll('.bu-compare-col').forEach(col=>{
-    if(!wanted.has(col.dataset.buKey)) return;
-    const key = col.dataset.buKey;
-    col.classList.add('is-highlighted');
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'bu-compare-view-btn';
-    // No visible label (the round arrow button carries no text) -- aria-label keeps
-    // it accessible to screen readers with the same meaning "View detail" used to say.
-    btn.setAttribute('aria-label', 'View ' + tname(key) + ' detail');
-    btn.addEventListener('click', function(){ onViewDetail(key); });
-    col.appendChild(btn);
-    // Scroll only the first highlighted column (in the topmost chart) into view.
-    if(first){ col.scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'}); first = false; }
-  });
 }
 
 function buildMetricSeg(){
@@ -1902,6 +1693,136 @@ function yearMatrix(title, hint, rows, years, colorVar, goodWhenUp, icon, unit, 
   return wrap;
 }
 
+
+// ---------- Dual-unit Bio Energy card: Ton/L + GJ per fuel ----------
+// NCV values (GJ/ton) from CP Group's own Appendix i (AR5)
+const BIO_NCV = {
+  'Wood': 15.99, 'Rice Husk': 14.40, 'Corncob': 16.78,
+  'Rice Straw': 13.80, 'Other Biomass': 12.68, 'Charcoal': 28.88,
+  'Palm Shell': 18.53, 'Cashew Nut Shell': 12.68, 'Bio Diesel': null,
+};
+const BIODIESEL_GJ_PER_L = 0.02268; // B100 NCV 22.68 MJ/L
+const BIO_UNIT = {
+  'Wood':'Ton','Rice Husk':'Ton','Corncob':'Ton','Rice Straw':'Ton',
+  'Other Biomass':'Ton','Charcoal':'Ton','Palm Shell':'Ton','Cashew Nut Shell':'Ton',
+  'Bio Diesel':'L',
+};
+// Display order: Wood first, Biodiesel last
+const BIO_ORDER = ['Wood','Rice Husk','Corncob','Rice Straw','Other Biomass','Charcoal','Palm Shell','Cashew Nut Shell','Bio Diesel'];
+
+function gjToPhysical(key, gj){
+  if(BIO_NCV[key] === null) return gj / BIODIESEL_GJ_PER_L; // litres
+  return gj / BIO_NCV[key]; // tons
+}
+
+function duFmt(v, forceUnit){
+  // forceUnit: append nothing (labels inside bars), or 'Ton'/'L'/'GJ' (summary)
+  const u = forceUnit || '';
+  if(v >= 1e6) return (v/1e6).toFixed(2) + 'M' + (u ? ' '+u : '');
+  if(v >= 1e5) return Math.round(v/1e3) + 'K' + (u ? ' '+u : '');
+  if(v >= 1e3) return (v/1e3).toFixed(1) + 'K' + (u ? ' '+u : '');
+  if(v < 1) return '0';
+  return Math.round(v).toString() + (u ? ' '+u : '');
+}
+
+function yearMatrixDualUnit(title, rows, years, goodWhenUp, selYear){
+  // rows: [{key, name, gjVals:[per year]}]
+  const wrap = document.createElement('div');
+  wrap.className = 'subbreak-box';
+  wrap.style.setProperty('--bar-color', 'var(--shade1)');
+
+  // Drop negligible rows (same 0.5% filter as yearMatrix)
+  const cardPeak = Math.max(0, ...rows.map(r => Math.max(...r.gjVals)));
+  const floor = cardPeak * 0.005;
+  const filtered = rows
+    .filter(r => Math.max(...r.gjVals) >= floor)
+    .sort((a,b)=>{
+      const ia = BIO_ORDER.indexOf(a.key), ib = BIO_ORDER.indexOf(b.key);
+      return (ia===-1?99:ia) - (ib===-1?99:ib);
+    });
+  if(!filtered.length) return null;
+
+  // Title with leaf icon
+  const h = document.createElement('div');
+  h.className = 'subbreak-title with-icon';
+  h.innerHTML = '<span class="ttl-icon"><svg viewBox="0 0 24 24" fill="#fff" aria-hidden="true"><path d="M20 4C10 4 4 8.5 4 15.5c0 1.7.5 3.2 1.3 4.5l1.6-1.6c.7-4.6 3.6-7.4 8-8.6-3.4 1.9-5.6 4.4-6.4 8.2A9 9 0 0 0 20 4Z"/></svg></span><span>'+title+'</span>';
+  wrap.appendChild(h);
+
+  const hint = document.createElement('div');
+  hint.style.cssText = 'font-size:9.5px;color:var(--text-secondary);margin:-4px 0 10px;';
+  hint.textContent = 'Ton / L · GJ (dual unit per row)';
+  wrap.appendChild(hint);
+
+  // Year header
+  const yh = document.createElement('div');
+  yh.className = 'ym-head';
+  yh.innerHTML = years.map((y,i)=> '<span'+(i===years.length-1?' class="cur"':'')+'>'+String(y).slice(2)+'</span>').join('');
+  wrap.appendChild(yh);
+
+  const selIdx = (()=>{ const i = years.indexOf(selYear); return i === -1 ? years.length-1 : i; })();
+
+  function pctTxt(v){ return (v>=0?'+':'') + v.toFixed(0) + '%'; }
+  function cls(v){
+    if(Math.abs(v) < 1e-9) return 'neutral';
+    return (goodWhenUp ? (v>0) : (v<=0)) ? 'good' : 'bad';
+  }
+
+  filtered.forEach(r =>{
+    const gjVals = r.gjVals;
+    const unit = BIO_UNIT[r.key] || 'Ton';
+    const physVals = gjVals.map(g => gjToPhysical(r.key, g));
+    const mxPhys = Math.max(...physVals, 1);
+    const mxGj = Math.max(...gjVals, 1);
+    const curGj = gjVals[selIdx], curPhys = physVals[selIdx];
+    const prevGj = selIdx > 0 ? gjVals[selIdx-1] : null;
+    const firstGj = gjVals[0];
+    const yoy = (prevGj && Math.abs(prevGj) > 1e-9) ? ((curGj-prevGj)/Math.abs(prevGj)*100) : null;
+    const since = (firstGj && Math.abs(firstGj) > 1e-9) ? ((curGj-firstGj)/Math.abs(firstGj)*100) : null;
+
+    // Build Ton/L bar row
+    let tonCols = '';
+    physVals.forEach((v,i)=>{
+      const step = physVals.length > 1 ? Math.round(i/(physVals.length-1)*5) : 5;
+      const hh = Math.max(v/mxPhys*100, v > 0 ? 8 : 0);
+      const tiny = hh < 20 ? ' tiny' : '';
+      tonCols += '<div class="du-col"><div class="du-bar'+tiny+'" style="height:'+hh.toFixed(0)+'%;background:var(--yr'+step+');'+(step>=4?'color:#fff;':'')+'">'+duFmt(v)+'</div></div>';
+    });
+
+    // Build GJ bar row
+    let gjCols = '';
+    gjVals.forEach((v,i)=>{
+      const step = gjVals.length > 1 ? Math.round(i/(gjVals.length-1)*5) : 5;
+      const hh = Math.max(v/mxGj*100, v > 0 ? 10 : 0);
+      const tiny = hh < 25 ? ' tiny' : '';
+      gjCols += '<div class="du-col"><div class="du-bar'+tiny+'" style="height:'+hh.toFixed(0)+'%;background:var(--gj'+step+');'+(step>=3?'color:#fff;':'')+'">'+duFmt(v)+'</div></div>';
+    });
+
+    const sinceHtml = since === null ? '' :
+      'vs '+years[0]+' <b class="'+cls(since)+'">'+pctTxt(since)+'</b>';
+    const yoyHtml = yoy === null ? '<span class="du-yoy neutral">—</span>' :
+      '<span class="du-yoy '+cls(yoy)+'">'+(yoy>=0?'+':'')+yoy.toFixed(1)+'% YoY</span>';
+
+    const row = document.createElement('div');
+    row.className = 'du-fuelrow';
+    row.innerHTML =
+      '<div class="du-left"><span class="du-name">'+r.name+'</span><span class="du-since">'+sinceHtml+'</span></div>' +
+      '<div class="du-years">' +
+        '<div class="du-unitrow"><span class="du-unittag">'+unit+'</span><div class="du-cols">'+tonCols+'</div></div>' +
+        '<div class="du-unitrow"><span class="du-unittag">GJ</span><div class="du-cols gj">'+gjCols+'</div></div>' +
+      '</div>' +
+      '<div class="du-right"><span class="du-cur-ton">'+duFmt(curPhys, unit)+'</span><span class="du-cur-gj">'+duFmt(curGj, 'GJ')+'</span>'+yoyHtml+'</div>';
+    wrap.appendChild(row);
+  });
+
+  // NCV footnote
+  const note = document.createElement('div');
+  note.style.cssText = 'font-size:8px;color:var(--text-muted);margin-top:8px;line-height:1.4;';
+  note.textContent = 'NCV: Wood 15.99, Rice Husk 14.40, Rice Straw 13.80, Palm Shell 18.53, Corncob 16.78, Charcoal 28.88, Other/Cashew Shell 12.68 GJ/ton — Biodiesel 22.68 MJ/L (Appendix i AR5)';
+  wrap.appendChild(note);
+
+  return wrap;
+}
+
 function renderDetailBreakdown(container, det, metric, multiYearDict, year, isGroup){
   container.innerHTML = '';
   if(!det){ container.innerHTML = '<div style="font-size:12px;color:var(--text-muted);">No detail available for this year/item</div>'; return; }
@@ -2009,8 +1930,8 @@ function renderDetailBreakdown(container, det, metric, multiYearDict, year, isGr
           renewRows, yrs, 'var(--shade1)', true, 'leaf', 'auto', year);
         if(renewCard) wrap.appendChild(renewCard);
 
-        // Bio Energy drills into the biomass feedstocks. Values run from ~4K to ~4.7M GJ,
-        // so this card reports thousands rather than millions.
+        // Bio Energy: dual-unit card showing both physical weight (Ton/L) and GJ
+        // Uses NCV from CP Group's Appendix i (AR5) to convert GJ -> Ton (or L for Biodiesel)
         const bmKeys = Object.keys(BIOMASS_LABELS).filter(k =>
           yrs.some(y => ((multiYearDict[String(y)].renewable||{}).biomass_types||{})[k] > 0));
         if(bmKeys.length){
@@ -2020,13 +1941,12 @@ function renderDetailBreakdown(container, det, metric, multiYearDict, year, isGr
             'Palm Shell':'Palm Shell', 'Cashew Nut Shell':'Cashew Shell',
           };
           const bmRows = bmKeys.map(k => ({
+            key: k,
             name: BM_SHORT[k] || BIOMASS_LABELS[k] || k,
-            vals: yrs.map(y => (((multiYearDict[String(y)].renewable||{}).biomass_types||{})[k]) || 0),
+            gjVals: yrs.map(y => (((multiYearDict[String(y)].renewable||{}).biomass_types||{})[k]) || 0),
           }));
-          const bioCard = yearMatrix(
-            'Bio Energy',
-            'GJ (unit per row)',
-            bmRows, yrs, 'var(--shade1)', true, 'leaf', 'auto', year);
+          const bioCard = yearMatrixDualUnit(
+            'Bio Energy by Type', bmRows, yrs, true, year);
           if(bioCard) wrap.appendChild(bioCard);
         }
       }
@@ -2119,10 +2039,33 @@ function renderDetailBreakdown(container, det, metric, multiYearDict, year, isGr
       mix = buildSourceStackChart(years, series, REN_COLORS, REN_NAMES, 'GJ', intenOverlayFor('renewable'));
     }
     wrap.appendChild(donutBlock(segs, 'GJ', mix, year, true));
-    // Biomass drills one level deeper into the actual feedstocks (wood, rice husk, …).
-    const bmNamed = {};
-    Object.entries(r.biomass_types||{}).forEach(([k,v])=>{ bmNamed[BIOMASS_LABELS[k]||k]=v; });
-    if(Object.keys(bmNamed).length) wrap.appendChild(subBarList('Biomass by Type', bmNamed, 'var(--shade1)', 'GJ'));
+    // Biomass drills one level deeper: dual-unit (Ton/L + GJ) when multi-year data
+    // is available, otherwise fallback to the single-bar list for single-year view.
+    if(multiYearDict){
+      const yrs = years.filter(y => multiYearDict[String(y)]);
+      if(yrs.length > 1){
+        const bmKeys2 = Object.keys(BIOMASS_LABELS).filter(k =>
+          yrs.some(y => ((multiYearDict[String(y)].renewable||{}).biomass_types||{})[k] > 0));
+        if(bmKeys2.length){
+          const BM_SHORT2 = {
+            'Wood':'Wood', 'Rice Husk':'Rice Husk', 'Corncob':'Corncob', 'Bio Diesel':'Biodiesel',
+            'Rice Straw':'Rice Straw', 'Other Biomass':'Other', 'Charcoal':'Charcoal',
+            'Palm Shell':'Palm Shell', 'Cashew Nut Shell':'Cashew Shell',
+          };
+          const bmRows2 = bmKeys2.map(k => ({
+            key: k,
+            name: BM_SHORT2[k] || BIOMASS_LABELS[k] || k,
+            gjVals: yrs.map(y => (((multiYearDict[String(y)].renewable||{}).biomass_types||{})[k]) || 0),
+          }));
+          const bioCard2 = yearMatrixDualUnit('Bio Energy by Type', bmRows2, yrs, true, year);
+          if(bioCard2) wrap.appendChild(bioCard2);
+        }
+      }
+    } else {
+      const bmNamed = {};
+      Object.entries(r.biomass_types||{}).forEach(([k,v])=>{ bmNamed[BIOMASS_LABELS[k]||k]=v; });
+      if(Object.keys(bmNamed).length) wrap.appendChild(subBarList('Biomass by Type', bmNamed, 'var(--shade1)', 'GJ'));
+    }
     wrap.appendChild(Object.assign(document.createElement('div'), {
       className:'detail-note',
       textContent:'Note: includes RECs and PPA under the broad Renewable Energy definition (matches the Renewable % KPI)'
@@ -2595,12 +2538,7 @@ function buildBUProfile(dict, detailDict, expandableKeys){
 
   // The detail card starts hidden (picker shows first) — only (re)draw once a BU has
   // actually been opened, so a theme toggle before that doesn't touch an empty view.
-  const redraw = function(){ if(detailCard.style.display !== 'none') render(); };
-  // Exposed so a page-load URL param (?bu=...) can jump straight to a BU's detail view
-  // without duplicating the open logic above — see the URL-param handling in Init.
-  redraw.openDetail = openDetail;
-  redraw.buKeys = names.filter(n=>!BU_HIDDEN.has(n));
-  return redraw;
+  return function(){ if(detailCard.style.display !== 'none') render(); };
 }
 
 // ---------- Bar breakdown (BU / Biz) ----------
@@ -2767,7 +2705,6 @@ function initTheme(redrawFns){
 
 // ---------- Init ----------
 buildKPI();
-renderBUCompareCharts();
 buildMetricSeg();
 drawMainChart();
 buildSBTChart();
@@ -2781,44 +2718,6 @@ initTheme([renderOverviewDetail, renderBU, renderBiz]);
 // Wire every breakdown card on the page for collapse/expand (both tabs, including the
 // Business Units panel that is still display:none at this point).
 axCollapsible();
-
-// ---------- URL param: highlight a Business Unit on load (?bu=makro) ----------
-// Lets a link/QR code point an executive straight at "their" BU. Stays on the Summary
-// tab (rather than jumping into the Business Units detail view) so the BU comparison
-// charts above are the first thing seen — the highlighted column carries its own "View
-// detail →" button for anyone who wants the full per-metric breakdown after that.
-// Matching is deliberately forgiving (case-insensitive, punctuation-insensitive) since a
-// URL author may not know the exact internal BU code (e.g. "AGRO CPG:BANGLADESH" vs a
-// param like "agro-cpg-bangladesh"). It matches in two passes:
-//   1) EXACT (normalized) match against the raw key OR the translated display name. A
-//      single exact hit wins outright -- ?bu=makro, ?bu=cpall, ?bu=cpfthai stay precise.
-//   2) PREFIX fallback (only when pass 1 found nothing): treat the param as a family
-//      prefix, so a short natural QR name lights up the BU(s) whose name STARTS with it.
-//      This is why ?bu=cpf -> "CPF THAI" + "CPF Oversea", ?bu=lotus -> "Lotus's",
-//      ?bu=true -> "TRUE COP". Without it these short names matched nothing (the keys
-//      carry suffixes like THAI / 's / COP). Requires >=2 chars so a stray single letter
-//      can't light up half the chart.
-(function(){
-  const want = (new URLSearchParams(window.location.search).get('bu') || '').trim();
-  if(!want) return;
-  const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
-  const wantLower = want.toLowerCase();
-  const wantNorm = norm(want);
-  const keys = renderBU.buKeys || [];
-
-  let matches = keys.filter(k => k.toLowerCase() === wantLower || tname(k).toLowerCase() === wantLower);
-  if(!matches.length) matches = keys.filter(k => norm(k) === wantNorm || norm(tname(k)) === wantNorm);
-  if(!matches.length && wantNorm.length >= 2){
-    matches = keys.filter(k => norm(k).startsWith(wantNorm) || norm(tname(k)).startsWith(wantNorm));
-  }
-  if(!matches.length) return;
-
-  highlightBUCompare(matches, function(key){
-    const buTabBtn = document.querySelector('.tab-btn[data-tab="bu"]');
-    if(buTabBtn) buTabBtn.click();
-    renderBU.openDetail(key);
-  });
-})();
 
 // First paint: animate the Summary tab in. rAF so every chart has been laid out and has a
 // real height before axReveal decides which SVGs are charts and which are inline icons.
