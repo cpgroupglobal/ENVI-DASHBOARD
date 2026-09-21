@@ -709,11 +709,13 @@ function fmtShort(v, unit, digits){
   const abs = Math.abs(v);
   let s;
   if(unit === '%'){ return v.toFixed(d) + '%'; }
-  if(abs >= 1e9) s = (v/1e9).toFixed(d) + 'B';
-  else if(abs >= 1e6) s = (v/1e6).toFixed(d) + 'M';
-  else if(abs >= 1e3) s = (v/1e3).toFixed(d) + 'K';
+  // Space before the M/K/B magnitude letter too (e.g. "58.56 M GJ" not "58.56M GJ") --
+  // requested so the number and its unit are visually separated everywhere on this page.
+  if(abs >= 1e9) s = (v/1e9).toFixed(d) + ' B';
+  else if(abs >= 1e6) s = (v/1e6).toFixed(d) + ' M';
+  else if(abs >= 1e3) s = (v/1e3).toFixed(d) + ' K';
   else s = v.toFixed(d === 0 ? 0 : 2);
-  return s + ' ' + unit;
+  return unit ? (s + ' ' + unit) : s;
 }
 
 function niceStep(rough){
@@ -1636,13 +1638,16 @@ function yearMatrix(title, hint, rows, years, colorVar, goodWhenUp, icon, unit, 
   // fixed for the whole row — the summary value on the right still carries it.
   function ymFmt(v, rowMax, withUnit){
     const u = withUnit === false ? '' : null;
+    // Space before the M/K letter, but only when a letter is actually shown (the
+    // legible summary value) -- the tiny in-bar labels (withUnit:false) show no
+    // letter at all already, so there's nothing to space out there.
     if(useAuto){
-      if(rowMax >= 1e6) return (v/1e6).toFixed(2) + (u === null ? 'M' : u);
-      if(rowMax >= 1e3) return Math.round(v/1e3) + (u === null ? 'K' : u);
+      if(rowMax >= 1e6) return (v/1e6).toFixed(2) + (u === null ? ' M' : u);
+      if(rowMax >= 1e3) return Math.round(v/1e3) + (u === null ? ' K' : u);
       return Math.round(v).toString();
     }
-    return useK ? (Math.round(v/1e3) + (u === null ? 'K' : u))
-                : ((v/1e6).toFixed(2) + (u === null ? 'M' : u));
+    return useK ? (Math.round(v/1e3) + (u === null ? ' K' : u))
+                : ((v/1e6).toFixed(2) + (u === null ? ' M' : u));
   }
   // Same unit as the per-year labels, so the summary value and the last bar match.
 
@@ -1725,9 +1730,13 @@ function gjToPhysical(key, gj){
 function duFmt(v, forceUnit){
   // forceUnit: append nothing (labels inside bars), or 'Ton'/'L'/'GJ' (summary)
   const u = forceUnit || '';
-  if(v >= 1e6) return (v/1e6).toFixed(2) + 'M' + (u ? ' '+u : '');
-  if(v >= 1e5) return Math.round(v/1e3) + 'K' + (u ? ' '+u : '');
-  if(v >= 1e3) return (v/1e3).toFixed(1) + 'K' + (u ? ' '+u : '');
+  // Space before the M/K letter only in the summary (forceUnit set, 13px legible text on
+  // the right) -- NOT in the tiny in-bar labels, where the extra character would reopen
+  // the mobile column-overflow bug that was just fixed.
+  const sep = u ? ' ' : '';
+  if(v >= 1e6) return (v/1e6).toFixed(2) + sep + 'M' + (u ? ' '+u : '');
+  if(v >= 1e5) return Math.round(v/1e3) + sep + 'K' + (u ? ' '+u : '');
+  if(v >= 1e3) return (v/1e3).toFixed(1) + sep + 'K' + (u ? ' '+u : '');
   if(v < 1) return '0';
   return Math.round(v).toString() + (u ? ' '+u : '');
 }
@@ -2408,7 +2417,7 @@ function drawSBTChart(years, s1Vals, s2Vals, actualVals, tPath, goal2030, select
   bauLbl.setAttribute('x', xOf(n-1)+8); bauLbl.setAttribute('y', yOf(bauVals[n-1])+3);
   bauLbl.setAttribute('font-size', fs-1); bauLbl.setAttribute('font-weight','700');
   bauLbl.setAttribute('fill', bauColor);
-  bauLbl.textContent = 'BAU: '+(bauVals[n-1]/1e6).toFixed(2)+'M';
+  bauLbl.textContent = 'BAU: '+(bauVals[n-1]/1e6).toFixed(2)+' M';
   svg.appendChild(bauLbl);
 
   return container;
