@@ -318,16 +318,23 @@ svg.linechart{ width:100%; height:200px; display:block; overflow:visible; }
 .du-years{ flex:1; display:flex; flex-direction:column; gap:3px; min-width:0; }
 .du-unitrow{ display:flex; align-items:flex-end; gap:4px; }
 .du-unittag{ width:28px; flex:none; font-size:9.5px; color:var(--text-secondary); font-weight:800; padding-bottom:3px; text-align:right; }
-.du-cols{ flex:1; display:flex; gap:2px; align-items:flex-end; height:36px; border-bottom:1px solid var(--gridline); }
+.du-cols{ flex:1; display:flex; gap:2px; align-items:flex-end; height:36px; border-bottom:1px solid var(--gridline); min-width:0; overflow:hidden; }
 .du-cols.gj{ height:24px; }
-.du-col{ flex:1; height:100%; display:flex; align-items:flex-end; }
-.du-bar{ width:100%; border-radius:2px 2px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:1px; font-size:8px; font-weight:700; color:var(--text-primary); box-sizing:border-box; overflow:hidden; line-height:1; }
+.du-col{ flex:1; height:100%; display:flex; align-items:flex-end; min-width:0; overflow:hidden; }
+.du-bar{ width:100%; border-radius:2px 2px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:1px; font-size:8px; font-weight:700; color:var(--text-primary); box-sizing:border-box; overflow:hidden; line-height:1; white-space:nowrap; }
 .du-bar.tiny{ font-size:7px; }
 .du-right{ width:72px; flex:none; text-align:right; display:flex; flex-direction:column; gap:1px; padding-bottom:1px; }
 .du-cur-ton{ font-size:13px; font-weight:800; color:var(--ym-accent); line-height:1.2; }
 .du-cur-gj{ font-size:13px; font-weight:700; color:var(--gj-accent); line-height:1.2; }
 .du-yoy{ font-size:8.5px; font-weight:700; white-space:nowrap; }
 .du-yoy.good{ color:var(--good); } .du-yoy.bad{ color:var(--critical); } .du-yoy.neutral{ color:var(--text-muted); }
+/* On narrow phones there isn't room to show a legible number inside each of the
+   6 mini bars (columns can shrink below 20px) -- hide the in-bar labels and let the
+   bar height/color carry the comparison; the exact current value stays legible at
+   full size in .du-cur-ton/.du-cur-gj on the right, which is never clipped. */
+@media (max-width: 480px){
+  .du-bar{ font-size:0 !important; }
+}
 
 /* Two columns: donut (with the year's total in its hole) left, value bars right.
    They wrap to stacked rows on narrow screens. */
