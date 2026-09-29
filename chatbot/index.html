@@ -228,7 +228,7 @@ function norm(s){ return s.toLowerCase().replace(/\s+/g,' ').trim(); }
 function detectDomain(q){
   if(/ขยะ|ของเสีย|waste|กากอุตสาหกรรม|diversion/i.test(q)) return 'waste';
   if(/น้ำ(?!มัน)|water/i.test(q)) return 'water';
-  if(/ค่าไฟ|พลังงาน|ghg|ก๊าซเรือนกระจก|คาร์บอน|โซลาร์|solar|energy|เชื้อเพลิง|scope\s*[12]|สโคป\s*[12]|renewable|หมุนเวียน|ชีวมวล|biomass|biogas|ไฟฟ้า/i.test(q)) return 'energy';
+  if(/ค่าไฟ|พลังงาน|ene+r?gy|ghg|ก๊าซเรือนกระจก|คาร์บอน|โซลาร์|solar|energy|เชื้อเพลิง|scope\s*[12]|สโคป\s*[12]|renewable|หมุนเวียน|ชีวมวล|biomass|biogas|ไฟฟ้า/i.test(q)) return 'energy';
   return null;
 }
 
@@ -1057,6 +1057,91 @@ function foodAnswer(qn, bu, grp){
   return { text:t, src:'Raw Data Waste', chart:{ series:sum, years:ys, unit:'ตัน' } };
 }
 
+
+// ---------- ถามหลายหัวข้อในประโยคเดียว (GHG / พลังงาน / น้ำ / ของเสีย) ----------
+const TOPIC_RE = {
+  ghg: /ghg|ก๊าซ|คาร์บอน|emission|co2|scope|สโคป/,
+  energy: /พลังงาน|ene+r?gy|energ|ไฟฟ้า|electric/,
+  water: /น้ำ(?!มัน)|wate?r/,
+  waste: /ขยะ|ของเสีย|wast/,
+};
+function detectTopics(qn){ return Object.keys(TOPIC_RE).filter(k=>TOPIC_RE[k].test(qn)); }
+function sumOf(D, members, key, i){
+  if(i<0) return null;
+  if(!members) return D.group[key] ? D.group[key][i] : null;
+  let s = 0, any = false;
+  members.forEach(b=>{ const r = D.bu[b]; if(r && r[key] && r[key][i]!=null){ s += r[key][i]; any = true; } });
+  return any ? s : null;
+}
+function chgTxt(cur, prev){
+  if(cur==null || !prev) return '';
+  const d = (cur-prev)/prev*100;
+  return ' ('+(d>0?'▲ +':(d<0?'▼ ':''))+d.toFixed(1)+'%)';
+}
+function multiAnswer(qn, bu, grp, topics){
+  const members = bu ? [bu] : (grp ? grp.members : null);
+  const name = bu || (grp ? grp.name : 'CP Group ทั้งหมด');
+  const ys = DATA_ENERGY.years;
+  const y = ys[qYearIdx(qn, ys)];
+  const line = (label, D, key, unit)=>{
+    const i = D.years.indexOf(y);
+    const v = sumOf(D, members, key, i);
+    if(v==null) return '  '+label+': ไม่มีข้อมูล';
+    return '  '+label+': '+fmt(v, unit)+chgTxt(v, i>0 ? sumOf(D, members, key, i-1) : null);
+  };
+  let t = opener()+'\n\n'+name+' — ปี '+y+'\n(ตัวเลขในวงเล็บ = เปลี่ยนแปลงจากปีก่อน)';
+  ['ghg','energy','water','waste'].filter(k=>topics.indexOf(k)>=0).forEach(k=>{
+    if(k==='ghg'){
+      const D = DATA_ENERGY;
+      t += '\n\n[ GHG Scope 1+2 ]\n'+line('รวม', D, 'ghg', 'tCO2e');
+      const dets = members ? members.map(b=>D.detail.bu[b] && D.detail.bu[b][String(y)]).filter(Boolean) : [D.detail.group[String(y)]];
+      if(dets.length){
+        let s1 = 0, s2 = 0;
+        dets.forEach(d=>{ const g = d.ghg; s1 += (g.s1_stationary||0)+(g.s1_fugitive||0)+(g.s1_mobile||0)+(g.s1_other||0); s2 += (g.s2||0); });
+        t += '\n  Scope 1: '+fmt(s1,'tCO2e')+' | Scope 2: '+fmt(s2,'tCO2e');
+      }
+    }
+    if(k==='energy'){
+      const D = DATA_ENERGY, i = D.years.indexOf(y);
+      t += '\n\n[ พลังงาน ]\n'+line('ใช้รวม', D, 'energy', 'GJ');
+      const en = sumOf(D, members, 'energy', i), re = sumOf(D, members, 'renewable', i);
+      if(en) t += '\n  พลังงานหมุนเวียน: '+fmt(re||0,'GJ')+' ('+((re||0)/en*100).toFixed(1)+'%)';
+      const c = sumOf(D, members, 'cost', i);
+      if(c) t += '\n  ค่าใช้จ่ายพลังงาน: '+fmt(c/1e6,'ล้านบาท');
+    }
+    if(k==='water'){
+      const D = DATA_WATER;
+      t += '\n\n[ น้ำ ]\n'+line('ดึงน้ำมาใช้', D, 'withdrawal', 'm³')+'\n'+line('ใช้น้ำ', D, 'consumption', 'm³')+'\n'+line('ระบายน้ำ', D, 'discharge', 'm³')+'\n'+line('นำกลับมาใช้', D, 'recycled', 'm³');
+    }
+    if(k==='waste'){
+      const D = DATA_WASTE, i = D.years.indexOf(y);
+      t += '\n\n[ ของเสีย ]\n'+line('เกิดขึ้น', D, 'generated', 'ตัน')+'\n'+line('นำกลับไปใช้ประโยชน์', D, 'diverted', 'ตัน')+'\n'+line('ส่งกำจัด', D, 'directed', 'ตัน')+'\n'+line('ของเสียอันตราย', D, 'hazardous', 'ตัน');
+      let dr = null;
+      if(!members) dr = D.group.diversion_rate[i];
+      else if(members.length===1 && D.bu[members[0]]) dr = D.bu[members[0]].diversion_rate[i];
+      else { const dv = sumOf(D, members, 'diverted', i), di = sumOf(D, members, 'directed', i); if(dv!=null && (dv+(di||0))>0) dr = dv/(dv+(di||0))*100; }
+      if(dr!=null) t += '\n  Diversion Rate: '+fmt(dr,'%');
+    }
+  });
+  const short = bu ? bu.toLowerCase() : (grp ? grp.kw[0] : '');
+  t += '\n\nถามเจาะต่อได้ เช่น "'+(short?short+' ':'')+'scope 1", "แหล่งน้ำ'+(short?' '+short:'')+'", "ขยะ วิธีกำจัด'+(short?' '+short:'')+'"';
+  return { text:t, src:'Raw Data EN-GHG / Water / Waste' };
+}
+function multiCountry(qn, c, topics){
+  let t = opener()+'\n\n'+cName(c)+' — ปี 2025\n(ตัวเลขในวงเล็บ = เปลี่ยนแปลงจากปีก่อน)';
+  const add = (label, ds)=>{
+    const r = ds.rows[c];
+    if(!r){ t += '\n  '+label+': ไม่มีข้อมูล'; return; }
+    const d = ds.diff[c];
+    t += '\n  '+label+': '+pf(r[4])+' '+ds.unit+(d!==undefined?' ('+(d>0?'▲ +':(d<0?'▼ ':''))+d.toFixed(2)+'%)':'');
+  };
+  if(topics.indexOf('ghg')>=0) add('GHG Scope 1+2', CTRY.ghg);
+  if(topics.indexOf('energy')>=0) add('พลังงาน', CTRY.energy);
+  if(topics.indexOf('water')>=0) add('ดึงน้ำมาใช้', CTRY.water);
+  if(topics.indexOf('waste')>=0) t += '\n  ของเสีย: ไม่มีข้อมูลแยกรายประเทศ (ถามราย BU ได้)';
+  return { text:t, src:PSRC };
+}
+
 function faqResult(f){
   const out = { text: f.a, src: f.src || 'รายงานความยั่งยืน 2568' };
   if(f.progress) out.progressChart = f.progress;
@@ -1086,6 +1171,20 @@ function answer(qRaw){
   if(/รายชื่อ\s*bu|มี\s*bu\s*อะไร|bu\s*ทั้งหมดมีอะไร|list bu/.test(qn)){
     const names = Object.keys(DATA_ENERGY.bu);
     return { text:'BU ที่มีข้อมูลทั้งหมด '+names.length+' หน่วย:\n'+names.map(n=>'  • '+n).join('\n'), src:'Raw Data EN-GHG / Water / Waste' };
+  }
+
+  {
+    const topics = detectTopics(qn);
+    const buM = anyBUin(qn);
+    const grpM = buM ? null : detectGroup(qn);
+    const allWords = /ทุกด้าน|ทุกเรื่อง|ทุกหมวด|ครบทุก|all topic/.test(qn);
+    const blocked = /intensity|ต่อรายได้|ทุก\s*bu|all bu|อันดับ|ranking|ทุกประเทศ|รายประเทศ|แต่ละประเทศ|โครงการ|นโยบาย|เป้า/.test(qn);
+    if(!blocked && (topics.length>=2 || (allWords && !buM && !grpM))){
+      const ctry = (!buM && !grpM) ? detectCountry(qn) : null;
+      const tps = topics.length>=2 ? topics : ['ghg','energy','water','waste'];
+      if(ctry) return multiCountry(qn, ctry, tps);
+      return multiAnswer(qn, buM, grpM, tps);
+    }
   }
 
   const anyBU = detectBU(qn, DATA_ENERGY) || detectBU(qn, DATA_WASTE);
