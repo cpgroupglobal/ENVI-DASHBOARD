@@ -36,6 +36,13 @@ header .status span{font-size:11px;color:rgba(255,255,255,0.62);}
 .typing span:nth-child(2){animation-delay:.2s;}
 .typing span:nth-child(3){animation-delay:.4s;}
 @keyframes blink{0%,60%,100%{opacity:.25;}30%{opacity:1;}}
+.mgrid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin-top:12px;white-space:normal;}
+.mtile{background:#F3F7EC;border-radius:10px;padding:8px 9px 6px;min-width:0;overflow:hidden;}
+.mlab{font-size:11px;color:#52514e;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.mval{font-size:14px;font-weight:600;color:#173404;line-height:1.3;margin-top:2px;white-space:nowrap;}
+.mval small{font-size:10px;font-weight:400;color:#52514e;}
+.mdelta{font-size:11px;font-weight:600;line-height:1.3;}
+.mdelta.good{color:#3B6D11;} .mdelta.bad{color:#B3261E;} .mdelta.flat{color:#72706A;}
 .src-badge{display:inline-flex;align-items:center;gap:4px;background:var(--header-green);color:#fff;font-size:10.5px;padding:3px 9px;border-radius:20px;margin-top:6px;}
 .bubble-wrap{max-width:78%;}
 #composer{display:flex;gap:8px;align-items:center;padding:12px 16px;background:var(--surface-2);flex:none;}
@@ -1123,9 +1130,15 @@ function multiAnswer(qn, bu, grp, topics){
       if(dr!=null) t += '\n  Diversion Rate: '+fmt(dr,'%');
     }
   });
+  const G = { ghg:['GHG', DATA_ENERGY, 'ghg', 'tCO2e'], energy:['พลังงาน', DATA_ENERGY, 'energy', 'GJ'], water:['น้ำ', DATA_WATER, 'withdrawal', 'm³'], waste:['ของเสีย', DATA_WASTE, 'generated', 'ตัน'] };
+  const grid = ['ghg','energy','water','waste'].filter(k=>topics.indexOf(k)>=0).map(k=>{
+    const g = G[k], D = g[1];
+    const series = D.years.map((yy,i)=>sumOf(D, members, g[2], i) || 0);
+    return { label:g[0], unit:g[3], series:series, years:D.years, idx:D.years.indexOf(y), good:'down' };
+  }).filter(it=>it.series.some(v=>v>0));
   const short = bu ? bu.toLowerCase() : (grp ? grp.kw[0] : '');
   t += '\n\nถามเจาะต่อได้ เช่น "'+(short?short+' ':'')+'scope 1", "แหล่งน้ำ'+(short?' '+short:'')+'", "ขยะ วิธีกำจัด'+(short?' '+short:'')+'"';
-  return { text:t, src:'Raw Data EN-GHG / Water / Waste' };
+  return { text:t, src:'Raw Data EN-GHG / Water / Waste', grid: grid.length>=2 ? grid : null };
 }
 function multiCountry(qn, c, topics){
   let t = opener()+'\n\n'+cName(c)+' — ปี 2025\n(ตัวเลขในวงเล็บ = เปลี่ยนแปลงจากปีก่อน)';
@@ -1140,6 +1153,40 @@ function multiCountry(qn, c, topics){
   if(topics.indexOf('water')>=0) add('ดึงน้ำมาใช้', CTRY.water);
   if(topics.indexOf('waste')>=0) t += '\n  ของเสีย: ไม่มีข้อมูลแยกรายประเทศ (ถามราย BU ได้)';
   return { text:t, src:PSRC };
+}
+
+function compactNum(v){
+  const a = Math.abs(v);
+  if(a>=1e6) return (v/1e6).toLocaleString('th-TH',{maximumFractionDigits:2})+' ล้าน';
+  if(a>=1e4) return (v/1e3).toLocaleString('th-TH',{maximumFractionDigits:1})+' พัน';
+  return v.toLocaleString('th-TH',{maximumFractionDigits:2});
+}
+function miniGridHTML(items){
+  let h = '<div class="mgrid">';
+  items.forEach(it=>{
+    const s = it.series, L = it.idx;
+    const max = Math.max.apply(null, s.map(v=>Math.abs(v||0))) || 1;
+    const w = 120, bh = 34, n = s.length, bw = w/n;
+    let bars = '';
+    s.forEach((v,i)=>{
+      const hgt = Math.max((Math.abs(v||0)/max)*bh, 1.5);
+      const col = i===L ? '#173404' : '#B5D08C';
+      bars += '<rect x="'+(i*bw+bw*0.15).toFixed(1)+'" y="'+(bh-hgt).toFixed(1)+'" width="'+(bw*0.7).toFixed(1)+'" height="'+hgt.toFixed(1)+'" rx="1.5" fill="'+col+'"/>';
+    });
+    const y0 = it.years[0], y1 = it.years[n-1];
+    const svg = '<svg viewBox="0 0 '+w+' '+(bh+11)+'" width="100%" style="display:block;margin-top:4px" role="img" aria-label="แนวโน้ม '+it.label+' '+y0+'-'+y1+'">'+bars
+      + '<text x="0" y="'+(bh+10)+'" font-size="8" fill="#72706A">'+y0+'</text>'
+      + '<text x="'+w+'" y="'+(bh+10)+'" font-size="8" fill="#72706A" text-anchor="end">'+y1+'</text></svg>';
+    let dcls = 'flat', dtxt = '–';
+    const cur = s[L], prev = L>0 ? s[L-1] : null;
+    if(prev){
+      const d = (cur-prev)/prev*100;
+      dtxt = (d>0?'▲ +':(d<0?'▼ ':''))+d.toFixed(1)+'%';
+      dcls = d===0 ? 'flat' : ((d<0) === (it.good==='down') ? 'good' : 'bad');
+    }
+    h += '<div class="mtile"><div class="mlab">'+it.label+' ('+it.unit+')</div><div class="mval">'+compactNum(cur)+'</div><div class="mdelta '+dcls+'">'+dtxt+'</div>'+svg+'</div>';
+  });
+  return h + '</div>';
 }
 
 function faqResult(f){
@@ -1307,7 +1354,7 @@ function answer(qRaw){
 
 const thread = document.getElementById('thread');
 
-function addBubble(text, isUser, src, chart, progress){
+function addBubble(text, isUser, src, chart, progress, grid){
   const row = document.createElement('div');
   row.className = 'msg-row' + (isUser?' user':'');
   if(!isUser){
@@ -1326,6 +1373,11 @@ function addBubble(text, isUser, src, chart, progress){
     const holder = document.createElement('div');
     holder.innerHTML = sparkSVG(chart.series, chart.years, chart.unit);
     b.appendChild(holder);
+  }
+  if(grid && grid.length){
+    const hg = document.createElement('div');
+    hg.innerHTML = miniGridHTML(grid);
+    b.appendChild(hg);
   }
   if(progress){
     const holder2 = document.createElement('div');
@@ -1360,7 +1412,7 @@ function ask(q){
     const t = document.getElementById('typingRow');
     if(t) t.remove();
     const r = answer(q);
-    addBubble(r.text, false, r.src, r.chart, r.progressChart);
+    addBubble(r.text, false, r.src, r.chart, r.progressChart, r.grid);
   }, 450);
 }
 
